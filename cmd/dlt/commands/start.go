@@ -7,10 +7,8 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"net/http"
 	"time"
 
 	_ "net/http/pprof"
@@ -30,7 +28,6 @@ var startCmd = &cobra.Command{
 			return
 		}
 
-		go runPProf()
 		logger.Info().Msg("Starting Sync ...")
 		startTime := time.Now().Unix()
 
@@ -87,8 +84,4 @@ var startCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 
 	},
-}
-
-func runPProf() {
-	log.Info().Err(http.ListenAndServe("0.0.0.0:6061", nil))
 }
