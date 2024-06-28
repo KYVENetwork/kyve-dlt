@@ -16,7 +16,7 @@ var (
 //go:embed config_template.yml
 var defaultConfig []byte
 
-func LoadConfig(configPath string) {
+func LoadConfig(configPath string) error {
 	viper.SetConfigFile(configPath)
 
 	// Create default config if config doesn't exist
@@ -39,6 +39,10 @@ func LoadConfig(configPath string) {
 		if err != nil {
 			logger.Fatal().Msg("failed to write default config")
 		}
+
+		logger.Info().Msg("created default config file, restart process")
+
+		return fmt.Errorf("could not find config file")
 	}
 
 	err := viper.ReadInConfig()
@@ -47,6 +51,7 @@ func LoadConfig(configPath string) {
 	}
 
 	setLogLevel()
+	return nil
 }
 
 func setLogLevel() {

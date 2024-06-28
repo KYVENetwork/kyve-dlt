@@ -104,7 +104,7 @@ func (b *BigQuery) bucketWorker(name string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return b.uploadCloudBucket("dbt_udf", fileName, csvBuffer)
 		}, func(err error) {
-			fmt.Printf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error())
+			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
 		})
 
 		b.bucketChannel <- fileName
@@ -126,7 +126,7 @@ func (b *BigQuery) bigqueryWorker(name string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return b.importCSVExplicitSchema("gs://dbt_udf/" + item)
 		}, func(err error) {
-			fmt.Printf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error())
+			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
 		})
 
 		logger.Debug().Msg(fmt.Sprintf("(%s) Imported %s - channel(uuid): %d\n", name, item, len(b.bucketChannel)))

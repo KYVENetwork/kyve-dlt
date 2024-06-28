@@ -26,7 +26,9 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the sync",
 	Run: func(cmd *cobra.Command, args []string) {
-		utils.LoadConfig(configPath)
+		if err := utils.LoadConfig(configPath); err != nil {
+			return
+		}
 
 		go runPProf()
 		logger.Info().Msg("Starting Sync ...")

@@ -78,7 +78,7 @@ func (p *Postgres) postgresWorker(name string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return p.bulkInsert(items)
 		}, func(err error) {
-			fmt.Printf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error())
+			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
 		})
 
 		fmt.Printf("(%s) Inserted %d rows. - channel(dataRow): %d\n", name, len(items), len(p.dataRowChannel))
