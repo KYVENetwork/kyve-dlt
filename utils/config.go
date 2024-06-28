@@ -17,9 +17,7 @@ var (
 var defaultConfig []byte
 
 func LoadConfig(configPath string) {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(configPath)
+	viper.SetConfigFile(configPath)
 
 	// Create default config if config doesn't exist
 	if _, err := os.Stat(configPath); err != nil {

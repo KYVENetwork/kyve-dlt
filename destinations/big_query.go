@@ -109,7 +109,7 @@ func (b *BigQuery) bucketWorker(name string) {
 
 		b.bucketChannel <- fileName
 
-		fmt.Printf("(%s) Uploaded %s - channel(csvFiles): %d, channel(uuid): %d\n", name, fileName, len(b.dataRowChannel), len(b.bucketChannel))
+		logger.Debug().Msg(fmt.Sprintf("(%s) Uploaded %s - channel(csvFiles): %d, channel(uuid): %d\n", name, fileName, len(b.dataRowChannel), len(b.bucketChannel)))
 	}
 }
 
@@ -129,7 +129,7 @@ func (b *BigQuery) bigqueryWorker(name string) {
 			fmt.Printf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error())
 		})
 
-		fmt.Printf("(%s) Imported %s - channel(uuid): %d\n", name, item, len(b.bucketChannel))
+		logger.Debug().Msg(fmt.Sprintf("(%s) Imported %s - channel(uuid): %d\n", name, item, len(b.bucketChannel)))
 	}
 }
 

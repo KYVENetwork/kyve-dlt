@@ -29,7 +29,7 @@ var startCmd = &cobra.Command{
 		utils.LoadConfig(configPath)
 
 		go runPProf()
-		log.Info().Msg("Starting Sync ...")
+		logger.Info().Msg("Starting Sync ...")
 		startTime := time.Now().Unix()
 
 		var dest destinations.Destination
@@ -80,7 +80,7 @@ var startCmd = &cobra.Command{
 
 		loader.NewLoader(loaderConfig, sourceConfig, dest).Start()
 
-		fmt.Printf("Time: %d seconds\n", time.Now().Unix()-startTime)
+		logger.Info().Msg(fmt.Sprintf("Time: %d seconds\n", time.Now().Unix()-startTime))
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
 

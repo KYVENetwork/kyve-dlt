@@ -135,7 +135,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 
 	columns := make([]DataRow, 0)
 	for _, kyveItem := range items {
-		utils.AwaitEnoughMemory("TODO", false)
+		utils.AwaitEnoughMemory("TODO")
 
 		prunedBlockResults := TendermintPreProcessedBlockResults{
 			Height:                kyveItem.Value.BlockResults.Height,

@@ -98,7 +98,7 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow
 
 	columns := make([]DataRow, 0)
 	for _, kyveItem := range items {
-		utils.AwaitEnoughMemory("TODO", false)
+		utils.AwaitEnoughMemory("TODO")
 
 		jsonValue, err := json.Marshal(kyveItem.Value)
 		if err != nil {

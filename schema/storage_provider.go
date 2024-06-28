@@ -35,14 +35,14 @@ func downloadBundle(bundle collector.Bundle) (*bytes.Buffer, error) {
 	rawData := responseBuffer.Bytes()
 
 	// Verify checksum
-	utils.AwaitEnoughMemory("TODO", false)
+	utils.AwaitEnoughMemory("TODO")
 	sha256hash := sha256.Sum256(rawData)
 	if fmt.Sprintf("%x", sha256hash) != bundle.DataHash {
 		return nil, errors.New("checksum does not match")
 	}
 
 	// uncompress gzip
-	utils.AwaitEnoughMemory("TODO", false)
+	utils.AwaitEnoughMemory("TODO")
 	reader, err := gzip.NewReader(responseBuffer)
 	if err != nil {
 		return nil, err

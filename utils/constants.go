@@ -1,5 +1,5 @@
 package utils
 
 const (
-	DefaultHomePath = ".trustless-api/config.yml"
+	DefaultHomePath = ".kyve-dlt/config.yml"
 )

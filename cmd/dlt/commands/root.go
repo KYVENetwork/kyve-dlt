@@ -2,11 +2,13 @@ package commands
 
 import (
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 )
 
 var (
 	configPath string
+	logger     = utils.DltLogger("cmd")
 )
 
 var rootCmd = &cobra.Command{
