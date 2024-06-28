@@ -1,22 +1,22 @@
 package loader
 
 import (
-	"KYVE-DLT/loader/collector"
-	"KYVE-DLT/schema"
-	"KYVE-DLT/tools"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
+	"github.com/KYVENetwork/KYVE-DLT/schema"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"strconv"
 	"time"
 )
 
 var (
-	csvLogger = tools.DltLogger("CSV")
+	logger = utils.DltLogger("CSV")
 )
 
 func (loader *Loader) Start() {
 
-	fmt.Printf("BundleConfig: %#v\n", loader.bundleConfig)
-	fmt.Printf("ConcurrencyConfig: %#v\n", loader.config)
+	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v\n", loader.sourceConfig))
+	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v\n", loader.config))
 
 	loader.bundlesChannel = make(chan BundlesBusItem, loader.config.ChannelSize)
 	loader.dataRowChannel = make(chan []schema.DataRow, loader.config.ChannelSize)
@@ -41,7 +41,7 @@ func (loader *Loader) Start() {
 func (loader *Loader) bundlesCollector() {
 	defer close(loader.bundlesChannel)
 
-	fetcher, err := collector.NewBundleFetcher(loader.bundleConfig)
+	fetcher, err := collector.NewSource(loader.sourceConfig)
 
 	if err != nil {
 		panic(err)
@@ -49,7 +49,7 @@ func (loader *Loader) bundlesCollector() {
 
 	fetcher.FetchBundles(func(bundles []collector.Bundle, err error) {
 		if err != nil {
-			fmt.Printf("Error fetching bundles: %v\nWaiting ... ", err)
+			logger.Error().Msg(fmt.Sprintf("Error fetching bundles: %v\nWaiting ... ", err))
 			time.Sleep(5 * time.Second)
 		} else {
 			fromBundleId, _ := strconv.ParseUint(bundles[0].Id, 10, 64)
@@ -74,16 +74,16 @@ func (loader *Loader) dataRowWorker(name string) {
 	for {
 		item, ok := <-loader.bundlesChannel
 		if !ok {
-			fmt.Printf("(%s) Finished\n", name)
+			logger.Info().Msg(fmt.Sprintf("(%s) Finished\n", name))
 			return
 		}
 
-		tools.AwaitEnoughMemory(name, true)
+		utils.AwaitEnoughMemory(name)
 
 		items := make([]schema.DataRow, 0)
 		for _, k := range item.bundles {
 
-			tools.TryWithExponentialBackoff(func() error {
+			utils.TryWithExponentialBackoff(func() error {
 				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k)
 				if err != nil {
 					return err
@@ -91,13 +91,18 @@ func (loader *Loader) dataRowWorker(name string) {
 				items = append(items, newRows...)
 				return nil
 			}, func(err error) {
-				fmt.Printf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error())
+				logger.Error().Msg(fmt.Sprintf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error()))
 			})
 		}
 
 		loader.dataRowChannel <- items
 
-		csvLogger.Info().Msg(fmt.Sprintf("Converted (fromKey: %s, toKey: %s, bundles: %d)", item.status.FromKey, item.status.ToKey, len(item.bundles)))
+		logger.Info().
+			Str("fromKey", item.status.FromKey).
+			Str("toKey", item.status.ToKey).
+			Int64("toBundleId", item.status.ToBundleId).
+			Int("bundles", len(item.bundles)).
+			Msg("converted")
 	}
 
 }

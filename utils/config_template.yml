@@ -1,0 +1,41 @@
+# --- KYVE-DLT CONFIGURATION
+# Supported: info (default), debug, none
+log_level: "info"
+
+# --- SOURCE CONFIGURATION ---
+# A source is a KYVE pool including the validated data that will be loaded into the destination.
+# Supported pool runtimes: @kyvejs/tendermint
+source:
+  pool_id: 0
+  from_bundle_id: 0
+  to_bundle_id: 100
+  step_size: 1
+  endpoint: "https://api.kyve.network"
+  # Column schema: tendermint (default), tendermint_preprocessed
+  schema: "tendermint"
+
+# --- DESTINATION CONFIGURATION ---
+# Supported destinations: BigQuery, Postgres
+# (Only specify values of the selected type.)
+destination:
+  # Destination type: big_query (default), postgres
+  type: "big_query"
+
+  # BigQuery config
+  big_query:
+    project_id: ""
+    dataset_id: ""
+    table_id: ""
+    big_query_worker_count: 1
+    bucket_worker_count: 1
+
+  # Postgres config
+  postgres:
+    connection_url: ""
+    table_name: ""
+    worker_count: 2
+
+# --- LOADER CONFIGURATION ---
+loader:
+  channel_size: 8
+  csv_worker_count: 4
