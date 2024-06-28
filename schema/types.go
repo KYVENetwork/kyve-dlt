@@ -1,8 +1,8 @@
 package schema
 
 import (
-	"KYVE-DLT/loader/collector"
 	"cloud.google.com/go/bigquery"
+	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 )
 
 type DataSource interface {

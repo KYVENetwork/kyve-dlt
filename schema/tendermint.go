@@ -1,11 +1,11 @@
 package schema
 
 import (
-	"KYVE-DLT/loader/collector"
-	"KYVE-DLT/tools"
 	"cloud.google.com/go/bigquery"
 	"encoding/json"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
 	"time"
 )
@@ -98,7 +98,7 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow
 
 	columns := make([]DataRow, 0)
 	for _, kyveItem := range items {
-		tools.AwaitEnoughMemory("TODO", false)
+		utils.AwaitEnoughMemory("TODO", false)
 
 		jsonValue, err := json.Marshal(kyveItem.Value)
 		if err != nil {

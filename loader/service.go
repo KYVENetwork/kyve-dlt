@@ -1,21 +1,21 @@
 package loader
 
 import (
-	"KYVE-DLT/loader/collector"
-	"KYVE-DLT/schema"
-	"KYVE-DLT/tools"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
+	"github.com/KYVENetwork/KYVE-DLT/schema"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"strconv"
 	"time"
 )
 
 var (
-	csvLogger = tools.DltLogger("CSV")
+	csvLogger = utils.DltLogger("CSV")
 )
 
 func (loader *Loader) Start() {
 
-	fmt.Printf("BundleConfig: %#v\n", loader.bundleConfig)
+	fmt.Printf("BundleConfig: %#v\n", loader.sourceConfig)
 	fmt.Printf("ConcurrencyConfig: %#v\n", loader.config)
 
 	loader.bundlesChannel = make(chan BundlesBusItem, loader.config.ChannelSize)
@@ -41,7 +41,7 @@ func (loader *Loader) Start() {
 func (loader *Loader) bundlesCollector() {
 	defer close(loader.bundlesChannel)
 
-	fetcher, err := collector.NewBundleFetcher(loader.bundleConfig)
+	fetcher, err := collector.NewSource(loader.sourceConfig)
 
 	if err != nil {
 		panic(err)
@@ -78,12 +78,12 @@ func (loader *Loader) dataRowWorker(name string) {
 			return
 		}
 
-		tools.AwaitEnoughMemory(name, true)
+		utils.AwaitEnoughMemory(name, true)
 
 		items := make([]schema.DataRow, 0)
 		for _, k := range item.bundles {
 
-			tools.TryWithExponentialBackoff(func() error {
+			utils.TryWithExponentialBackoff(func() error {
 				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k)
 				if err != nil {
 					return err

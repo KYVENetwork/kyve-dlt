@@ -10,25 +10,25 @@ import (
 	"strings"
 )
 
-func NewBundleFetcher(config BundleFetcherConfig) (BundleFetcher, error) {
+func NewSource(config SourceConfig) (Source, error) {
 
 	if config.PoolId < 0 {
-		return BundleFetcher{}, errors.New("invalid pool-id")
+		return Source{}, errors.New("invalid pool-id")
 	}
 
 	if config.FromBundleId < 0 || config.FromBundleId > config.ToBundleId {
-		return BundleFetcher{}, errors.New("invalid from-bundle-id")
+		return Source{}, errors.New("invalid from-bundle-id")
 	}
 
 	if config.ToBundleId < 0 {
-		return BundleFetcher{}, errors.New("invalid to-bundle-id")
+		return Source{}, errors.New("invalid to-bundle-id")
 	}
 
 	if strings.HasSuffix(config.Endpoint, "/") {
 		config.Endpoint = config.Endpoint[:len(config.Endpoint)-1]
 	}
 
-	return BundleFetcher{
+	return Source{
 		poolId:       config.PoolId,
 		fromBundleId: config.FromBundleId,
 		toBundleId:   config.ToBundleId,
@@ -37,14 +37,14 @@ func NewBundleFetcher(config BundleFetcherConfig) (BundleFetcher, error) {
 	}, nil
 }
 
-func (b BundleFetcher) FetchBundles(handler func(bundles []Bundle, err error)) {
+func (s Source) FetchBundles(handler func(bundles []Bundle, err error)) {
 	response, responseError := http.Get(
 		fmt.Sprintf(
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.offset=%d",
-			b.endpoint,
-			b.poolId,
-			b.stepSize,
-			b.fromBundleId,
+			s.endpoint,
+			s.poolId,
+			s.stepSize,
+			s.fromBundleId,
 		))
 	if responseError != nil {
 		handler(nil, fmt.Errorf("initial bundle request failed: %s", responseError.Error()))
@@ -57,18 +57,18 @@ func (b BundleFetcher) FetchBundles(handler func(bundles []Bundle, err error)) {
 		handler(nil, fmt.Errorf("initial bundle request failed: %s", responseError.Error()))
 	}
 
-	if len(initialBundles) > int(b.toBundleId-b.fromBundleId+1) {
+	if len(initialBundles) > int(s.toBundleId-s.fromBundleId+1) {
 		// Already finished
-		handler(initialBundles[:b.toBundleId-b.fromBundleId+1], nil)
+		handler(initialBundles[:s.toBundleId-s.fromBundleId+1], nil)
 		return
 	}
 	handler(initialBundles, nil)
 
 	// Iterate remaining bundles
-	currentBundleId := b.fromBundleId
-	for currentBundleId < b.toBundleId {
+	currentBundleId := s.fromBundleId
+	for currentBundleId < s.toBundleId {
 
-		newBundles, nextKey, err := b.fetch(paginationKey)
+		newBundles, nextKey, err := s.fetch(paginationKey)
 		if err != nil {
 			handler(nil, err)
 			continue
@@ -81,7 +81,7 @@ func (b BundleFetcher) FetchBundles(handler func(bundles []Bundle, err error)) {
 				handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", idErr.Error()))
 				return
 			}
-			if int64(id) <= b.toBundleId {
+			if int64(id) <= s.toBundleId {
 				currentBundleId = int64(id)
 				bundles = append(bundles, bundle)
 			} else {
@@ -99,13 +99,13 @@ func (b BundleFetcher) FetchBundles(handler func(bundles []Bundle, err error)) {
 
 }
 
-func (b BundleFetcher) fetch(paginationKey string) ([]Bundle, string, error) {
+func (s Source) fetch(paginationKey string) ([]Bundle, string, error) {
 	response, responseError := http.Get(
 		fmt.Sprintf(
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.key=%s",
-			b.endpoint,
-			b.poolId,
-			b.stepSize,
+			s.endpoint,
+			s.poolId,
+			s.stepSize,
 			strings.ReplaceAll(paginationKey, "+", "%2b"),
 		))
 	if responseError != nil {

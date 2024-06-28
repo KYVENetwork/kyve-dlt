@@ -1,9 +1,9 @@
 package loader
 
 import (
-	"KYVE-DLT/destinations"
-	"KYVE-DLT/loader/collector"
-	"KYVE-DLT/schema"
+	"github.com/KYVENetwork/KYVE-DLT/destinations"
+	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
+	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"sync"
 )
 
@@ -21,7 +21,7 @@ type Loader struct {
 	destinationWaitGroup sync.WaitGroup
 
 	config       Config
-	bundleConfig collector.BundleFetcherConfig
+	sourceConfig collector.SourceConfig
 	destination  destinations.Destination
 }
 
@@ -31,10 +31,10 @@ type Config struct {
 	SourceSchema   schema.DataSource
 }
 
-func NewLoader(loaderConfig Config, bundleConfig collector.BundleFetcherConfig, destination destinations.Destination) *Loader {
+func NewLoader(loaderConfig Config, sourceConfig collector.SourceConfig, destination destinations.Destination) *Loader {
 	return &Loader{
 		config:       loaderConfig,
-		bundleConfig: bundleConfig,
+		sourceConfig: sourceConfig,
 		destination:  destination,
 	}
 }

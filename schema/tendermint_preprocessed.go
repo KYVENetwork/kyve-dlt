@@ -1,11 +1,11 @@
 package schema
 
 import (
-	"KYVE-DLT/loader/collector"
-	"KYVE-DLT/tools"
 	"cloud.google.com/go/bigquery"
 	"encoding/json"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
 	"strconv"
 	"time"
@@ -135,7 +135,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 
 	columns := make([]DataRow, 0)
 	for _, kyveItem := range items {
-		tools.AwaitEnoughMemory("TODO", false)
+		utils.AwaitEnoughMemory("TODO", false)
 
 		prunedBlockResults := TendermintPreProcessedBlockResults{
 			Height:                kyveItem.Value.BlockResults.Height,

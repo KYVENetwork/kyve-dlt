@@ -1,7 +1,7 @@
 package destinations
 
 import (
-	"KYVE-DLT/schema"
+	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"sync"
 )
 

@@ -2,7 +2,7 @@ package collector
 
 import "time"
 
-type BundleFetcherConfig struct {
+type SourceConfig struct {
 	PoolId int64
 	// inclusive
 	FromBundleId int64
@@ -14,7 +14,7 @@ type BundleFetcherConfig struct {
 	Endpoint string
 }
 
-type BundleFetcher struct {
+type Source struct {
 	poolId int64
 	// inclusive
 	fromBundleId int64

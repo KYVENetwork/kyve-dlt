@@ -1,13 +1,13 @@
 package schema
 
 import (
-	"KYVE-DLT/loader/collector"
-	"KYVE-DLT/tools"
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"net/http"
 )
 
@@ -35,14 +35,14 @@ func downloadBundle(bundle collector.Bundle) (*bytes.Buffer, error) {
 	rawData := responseBuffer.Bytes()
 
 	// Verify checksum
-	tools.AwaitEnoughMemory("TODO", false)
+	utils.AwaitEnoughMemory("TODO", false)
 	sha256hash := sha256.Sum256(rawData)
 	if fmt.Sprintf("%x", sha256hash) != bundle.DataHash {
 		return nil, errors.New("checksum does not match")
 	}
 
 	// uncompress gzip
-	tools.AwaitEnoughMemory("TODO", false)
+	utils.AwaitEnoughMemory("TODO", false)
 	reader, err := gzip.NewReader(responseBuffer)
 	if err != nil {
 		return nil, err

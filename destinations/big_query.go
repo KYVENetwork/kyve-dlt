@@ -1,13 +1,13 @@
 package destinations
 
 import (
-	"KYVE-DLT/schema"
-	"KYVE-DLT/tools"
 	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/schema"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
 	"io"
 	"sync"
@@ -101,7 +101,7 @@ func (b *BigQuery) bucketWorker(name string) {
 
 		fileName := fmt.Sprintf("dlt/%s.csv.gz", uuid.New().String())
 
-		tools.TryWithExponentialBackoff(func() error {
+		utils.TryWithExponentialBackoff(func() error {
 			return b.uploadCloudBucket("dbt_udf", fileName, csvBuffer)
 		}, func(err error) {
 			fmt.Printf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error())
@@ -123,7 +123,7 @@ func (b *BigQuery) bigqueryWorker(name string) {
 			return
 		}
 
-		tools.TryWithExponentialBackoff(func() error {
+		utils.TryWithExponentialBackoff(func() error {
 			return b.importCSVExplicitSchema("gs://dbt_udf/" + item)
 		}, func(err error) {
 			fmt.Printf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error())
