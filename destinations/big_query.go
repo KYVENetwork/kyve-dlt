@@ -214,7 +214,7 @@ func (b *BigQuery) uploadCloudBucket(bucket, object string, buf io.Reader) error
 		return fmt.Errorf("Writer.Close: %w", err)
 	}
 
-	fmt.Sprintf("bundles: %d, csv: %d", len(b.bucketChannel))
+	logger.Info().Msg(fmt.Sprintf("bundles: %d, csv: %d", len(b.bucketChannel)))
 
 	return nil
 }
