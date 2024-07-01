@@ -7,6 +7,7 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
+	"strconv"
 	"time"
 )
 
@@ -20,7 +21,7 @@ type TendermintRow struct {
 	_dlt_extracted_at string
 	key               string
 	value             string
-	offset            string
+	bundle_id         int64
 }
 
 func (t TendermintRow) ConvertToCSVLine() []string {
@@ -30,61 +31,58 @@ func (t TendermintRow) ConvertToCSVLine() []string {
 		"{\"errors\":[], \"loader\": \"KYVE-DLT\"}", // airbyte meta_data
 		t.key,
 		t.value,
-		t.offset,
+		strconv.FormatInt(t.bundle_id, 10),
 	}
 }
 
+// TODO: Refactor to Base schema
 type Tendermint struct{}
 
 func (t Tendermint) GetBigQuerySchema() bigquery.Schema {
 	return bigquery.Schema{
-		{Name: "_airbyte_raw_id", Type: bigquery.StringFieldType},
-		{Name: "_airbyte_extracted_at", Type: bigquery.TimestampFieldType},
-		{Name: "_airbyte_meta", Type: bigquery.JSONFieldType},
+		{Name: "_dlt_raw_id", Type: bigquery.StringFieldType},
+		{Name: "_dlt_extracted_at", Type: bigquery.TimestampFieldType},
 		{Name: "key", Type: bigquery.StringFieldType},
 		{Name: "value", Type: bigquery.JSONFieldType},
-		{Name: "offset", Type: bigquery.StringFieldType},
+		{Name: "bundle_id", Type: bigquery.IntegerFieldType},
 	}
 }
 
 func (t Tendermint) GetBigQueryTimePartitioning() *bigquery.TimePartitioning {
 	return &bigquery.TimePartitioning{
-		Field: "_airbyte_extracted_at",
+		Field: "_dlt_extracted_at",
 		Type:  bigquery.DayPartitioningType,
 	}
 }
 
 func (t Tendermint) GetBigQueryClustering() *bigquery.Clustering {
-	return &bigquery.Clustering{Fields: []string{"_airbyte_extracted_at"}}
+	return &bigquery.Clustering{Fields: []string{"_dlt_extracted_at"}}
 }
 
 func (t Tendermint) GetCSVSchema() []string {
 	return []string{
-		"_airbyte_raw_id",
-		"_airbyte_extracted_at",
-		"_airbyte_meta",
+		"_dlt_raw_id",
+		"_dlt_extracted_at",
 		"key",
 		"value",
-		"offset",
+		"bundle_id",
 	}
 }
 
 func (t Tendermint) GetPostgresCreateTableCommand(name string) string {
 	return fmt.Sprintf(`
 CREATE TABLE IF NOT EXISTS %s (
-    _airbyte_raw_id varchar NOT NULL,
-    _airbyte_extracted_at timestamp NOT NULL,
-    _airbyte_meta varchar NOT NULL,
-    "key" integer NOT NULL, 
+    _dlt_raw_id varchar NOT NULL,
+    _dlt_extracted_at timestamp NOT NULL,
+    "key" varchar NOT NULL, 
     "value" varchar, 
-    "offset" varchar NOT NULL, 
+    "bundle_id" integer NOT NULL, 
     PRIMARY KEY (key)
     )
     `, name)
 }
 
 func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error) {
-
 	bundleBuffer, err := downloadBundle(bundle)
 	if err != nil {
 		return nil, err
@@ -95,6 +93,8 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow
 	if err != nil {
 		return nil, err
 	}
+
+	bundleId, _ := strconv.ParseUint(bundle.Id, 10, 64)
 
 	columns := make([]DataRow, 0)
 	for _, kyveItem := range items {
@@ -109,14 +109,10 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow
 			_dlt_extracted_at: time.Now().Format(time.RFC3339),
 			value:             string(jsonValue),
 			key:               kyveItem.Key,
-			offset:            bundle.Id,
+			bundle_id:         int64(bundleId),
 		})
 
 	}
 
 	return columns, nil
-}
-
-func (t Tendermint) GetPrimaryField() string {
-	return "key"
 }
