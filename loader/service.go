@@ -10,11 +10,10 @@ import (
 )
 
 var (
-	logger = utils.DltLogger("CSV")
+	logger = utils.DltLogger("loader")
 )
 
 func (loader *Loader) Start() {
-
 	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
@@ -23,10 +22,16 @@ func (loader *Loader) Start() {
 
 	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
 
-	latestBundleId := loader.destination.GetLatestBundleId()
+	loader.latestBundleId = loader.destination.GetLatestBundleId()
+	logger.Info().Int64("id", loader.latestBundleId).Msg("set latestBundleId")
+
+	if loader.latestBundleId != 0 && loader.latestBundleId >= loader.sourceConfig.ToBundleId {
+		logger.Info().Int64("id", loader.latestBundleId).Msg("latest bundle_id equals config to_bundle_id, exiting...")
+		return
+	}
 
 	//Fetches bundles from api.kyve.network
-	go loader.bundlesCollector(latestBundleId)
+	go loader.bundlesCollector()
 
 	// Downloads bundles from Arweave and converts preprocesses them
 	loader.dataRowWaitGroup.Add(loader.config.CsvWorkerCount)
@@ -44,7 +49,7 @@ func (loader *Loader) Start() {
 	loader.destinationWaitGroup.Wait()
 }
 
-func (loader *Loader) bundlesCollector(latestBundleId int64) {
+func (loader *Loader) bundlesCollector() {
 	defer close(loader.bundlesChannel)
 
 	fetcher, err := collector.NewSource(loader.sourceConfig)
@@ -53,22 +58,25 @@ func (loader *Loader) bundlesCollector(latestBundleId int64) {
 		panic(err)
 	}
 
-	fetcher.FetchBundles(latestBundleId, func(bundles []collector.Bundle, err error) {
+	fetcher.FetchBundles(loader.latestBundleId, func(bundles []collector.Bundle, err error) {
 		if err != nil {
-			logger.Error().Msg(fmt.Sprintf("Error fetching bundles: %v\nWaiting ... ", err))
+			logger.Error().Msg(fmt.Sprintf("error fetching bundles: %v", err))
+			logger.Info().Msg("waiting...")
 			time.Sleep(5 * time.Second)
 		} else {
-			fromBundleId, _ := strconv.ParseUint(bundles[0].Id, 10, 64)
-			toBundleId, _ := strconv.ParseUint(bundles[len(bundles)-1].Id, 10, 64)
-			loader.bundlesChannel <- BundlesBusItem{
-				bundles: bundles,
-				status: Status{
-					FromBundleId: int64(fromBundleId),
-					ToBundleId:   int64(toBundleId),
-					FromKey:      bundles[0].FromKey,
-					ToKey:        bundles[len(bundles)-1].ToKey,
-					DataSize:     0,
-				},
+			if len(bundles) > 0 {
+				fromBundleId, _ := strconv.ParseUint(bundles[0].Id, 10, 64)
+				toBundleId, _ := strconv.ParseUint(bundles[len(bundles)-1].Id, 10, 64)
+				loader.bundlesChannel <- BundlesBusItem{
+					bundles: bundles,
+					status: Status{
+						FromBundleId: int64(fromBundleId),
+						ToBundleId:   int64(toBundleId),
+						FromKey:      bundles[0].FromKey,
+						ToKey:        bundles[len(bundles)-1].ToKey,
+						DataSize:     0,
+					},
+				}
 			}
 		}
 	})
@@ -88,6 +96,12 @@ func (loader *Loader) dataRowWorker(name string) {
 
 		items := make([]schema.DataRow, 0)
 		for _, k := range item.bundles {
+			bundleId, _ := strconv.ParseInt(k.Id, 10, 64)
+
+			if bundleId > loader.sourceConfig.ToBundleId {
+				logger.Info().Int64("bundle-id", bundleId).Msg(fmt.Sprintf("(%s) Finished: Reached to_bundle_id", name))
+				return
+			}
 
 			utils.TryWithExponentialBackoff(func() error {
 				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k)

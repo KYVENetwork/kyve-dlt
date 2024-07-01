@@ -47,7 +47,7 @@ func (s Source) FetchBundles(latestBundleId int64, handler func(bundles []Bundle
 
 	if latestBundleId > s.fromBundleId {
 		offset = latestBundleId + 1
-		logger.Info().Int64("latestBundleId", latestBundleId+1).Msg("setting offest to latest found bundle_id")
+		logger.Info().Int64("latestBundleId", latestBundleId+1).Msg("setting offset to latest found bundle_id")
 	}
 
 	response, responseError := http.Get(
