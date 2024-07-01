@@ -41,13 +41,13 @@ func (p *Postgres) Close() {
 	}
 }
 
-func (p *Postgres) GetLatestBundleId() int64 {
-	stmt := fmt.Sprintf("SELECT COALESCE(MAX(%s), 0) FROM %s",
+func (p *Postgres) GetLatestBundleId() *int64 {
+	stmt := fmt.Sprintf("SELECT MAX(%s) FROM %s",
 		"bundle_id",
 		p.config.TableName,
 	)
 
-	var latestBundleId int64
+	var latestBundleId *int64
 	err := p.db.QueryRow(stmt).Scan(&latestBundleId)
 	if err != nil {
 		panic(err)

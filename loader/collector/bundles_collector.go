@@ -42,14 +42,7 @@ func NewSource(config SourceConfig) (Source, error) {
 	}, nil
 }
 
-func (s Source) FetchBundles(latestBundleId int64, handler func(bundles []Bundle, err error)) {
-	offset := s.fromBundleId
-
-	if latestBundleId > s.fromBundleId {
-		offset = latestBundleId + 1
-		logger.Info().Int64("latestBundleId", latestBundleId+1).Msg("setting offset to latest found bundle_id")
-	}
-
+func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err error)) {
 	response, responseError := http.Get(
 		fmt.Sprintf(
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.offset=%d",

@@ -49,7 +49,7 @@ type BigQuery struct {
 
 func (b *BigQuery) Close() {}
 
-func (b *BigQuery) GetLatestBundleId() int64 {
+func (b *BigQuery) GetLatestBundleId() *int64 {
 	ctx := context.Background()
 
 	client, err := bigquery.NewClient(ctx, b.config.ProjectId)
@@ -67,7 +67,7 @@ func (b *BigQuery) GetLatestBundleId() int64 {
 		var apiErr *googleapi.Error
 		if errors.As(err, &apiErr) && apiErr.Code == 404 {
 			logger.Debug().Msg("BigQuery table does not exist yet")
-			return 0
+			return nil
 		}
 		panic(err)
 	}
@@ -81,13 +81,13 @@ func (b *BigQuery) GetLatestBundleId() int64 {
 		}
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("BigQuery iterator failed")
-			return 0
+			return nil
 		}
 		if row[0] != nil {
 			latestBundleId = row[0].(int64)
 		}
 	}
-	return latestBundleId
+	return &latestBundleId
 }
 
 func (b *BigQuery) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {

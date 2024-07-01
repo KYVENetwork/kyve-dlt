@@ -23,10 +23,15 @@ func (loader *Loader) Start() {
 	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
 
 	loader.latestBundleId = loader.destination.GetLatestBundleId()
-	logger.Info().Int64("id", loader.latestBundleId).Msg("set latestBundleId")
 
-	if loader.latestBundleId != 0 && loader.latestBundleId >= loader.sourceConfig.ToBundleId {
-		logger.Info().Int64("id", loader.latestBundleId).Msg("latest bundle_id equals config to_bundle_id, exiting...")
+	if loader.latestBundleId != nil {
+		logger.Info().Str("id", strconv.FormatInt(*loader.latestBundleId, 10)).Msg("set latestBundleId")
+	} else {
+		logger.Info().Msg("detected initial sync")
+	}
+
+	if loader.latestBundleId != nil && *loader.latestBundleId >= loader.sourceConfig.ToBundleId {
+		logger.Info().Int64("id", *loader.latestBundleId).Msg("latest bundle_id equals config to_bundle_id, exiting...")
 		return
 	}
 
@@ -58,7 +63,13 @@ func (loader *Loader) bundlesCollector() {
 		panic(err)
 	}
 
-	fetcher.FetchBundles(loader.latestBundleId, func(bundles []collector.Bundle, err error) {
+	offset := loader.sourceConfig.FromBundleId
+	if loader.latestBundleId != nil {
+		offset = *loader.latestBundleId + 1
+		logger.Info().Int64("id", offset).Msg("using latest_bundle_id as offset")
+	}
+
+	fetcher.FetchBundles(offset, func(bundles []collector.Bundle, err error) {
 		if err != nil {
 			logger.Error().Msg(fmt.Sprintf("error fetching bundles: %v", err))
 			logger.Info().Msg("waiting...")
