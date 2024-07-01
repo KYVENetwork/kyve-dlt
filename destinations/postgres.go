@@ -74,6 +74,7 @@ func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []sc
 }
 
 func (p *Postgres) StartProcess(waitGroup *sync.WaitGroup) {
+	waitGroup.Add(1)
 	p.postgresWaitGroup.Add(p.config.PostgresWorkerCount)
 	for i := 1; i <= p.config.PostgresWorkerCount; i++ {
 		go p.postgresWorker(fmt.Sprintf("postgres-%d", i))

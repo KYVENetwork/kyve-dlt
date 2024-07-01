@@ -44,9 +44,9 @@ func (loader *Loader) Start() {
 	loader.dataRowWaitGroup.Wait()
 	close(loader.dataRowChannel)
 
-	loader.destination.Close()
-
 	loader.destinationWaitGroup.Wait()
+
+	loader.destination.Close()
 }
 
 func (loader *Loader) bundlesCollector() {
