@@ -76,7 +76,7 @@ func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []sc
 func (p *Postgres) StartProcess(waitGroup *sync.WaitGroup) {
 	p.postgresWaitGroup.Add(p.config.PostgresWorkerCount)
 	for i := 1; i <= p.config.PostgresWorkerCount; i++ {
-		go p.postgresWorker(fmt.Sprintf("Postgres - %d", i))
+		go p.postgresWorker(fmt.Sprintf("postgres-%d", i))
 	}
 
 	go func() {
@@ -86,13 +86,13 @@ func (p *Postgres) StartProcess(waitGroup *sync.WaitGroup) {
 	}()
 }
 
-func (p *Postgres) postgresWorker(name string) {
+func (p *Postgres) postgresWorker(workerId string) {
 	defer p.postgresWaitGroup.Done()
 
 	for {
 		items, ok := <-p.dataRowChannel
 		if !ok {
-			logger.Debug().Msg(fmt.Sprintf("(%s) Finished\n", name))
+			logger.Debug().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 		_ = items
@@ -100,10 +100,10 @@ func (p *Postgres) postgresWorker(name string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return p.bulkInsert(items)
 		}, func(err error) {
-			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
+			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
 		})
 
-		logger.Info().Msg(fmt.Sprintf("(%s) Inserted %d rows. - channel(dataRow): %d\n", name, len(items), len(p.dataRowChannel)))
+		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("Inserted %d rows. - channel(dataRow): %d", len(items), len(p.dataRowChannel)))
 	}
 }
 

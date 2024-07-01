@@ -102,13 +102,13 @@ func (b *BigQuery) StartProcess(waitGroup *sync.WaitGroup) {
 	// Uploads CSV files to Google Cloud Storage
 	b.bucketWaitGroup.Add(b.config.BucketWorkerCount)
 	for i := 1; i <= b.config.BucketWorkerCount; i++ {
-		go b.bucketWorker(fmt.Sprintf("Bucket - %d", i))
+		go b.bucketWorker(fmt.Sprintf("bucket-%d", i))
 	}
 
 	// Import CSV files from Google Bucket to Table
 	b.bigQueryWaitGroup.Add(b.config.BigQueryWorkerCount)
 	for i := 1; i <= b.config.BigQueryWorkerCount; i++ {
-		go b.bigqueryWorker(fmt.Sprintf("BigQuery - %d", i))
+		go b.bigqueryWorker(fmt.Sprintf("big_query-%d", i))
 	}
 
 	go func() {
@@ -121,13 +121,13 @@ func (b *BigQuery) StartProcess(waitGroup *sync.WaitGroup) {
 	}()
 }
 
-func (b *BigQuery) bucketWorker(name string) {
+func (b *BigQuery) bucketWorker(workerId string) {
 	defer b.bucketWaitGroup.Done()
 
 	for {
 		itemRows, ok := <-b.dataRowChannel
 		if !ok {
-			logger.Info().Msg(fmt.Sprintf("(%s) Finished", name))
+			logger.Info().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 
@@ -150,32 +150,32 @@ func (b *BigQuery) bucketWorker(name string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return b.uploadCloudBucket("dbt_udf", fileName, csvBuffer)
 		}, func(err error) {
-			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
+			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
 		b.bucketChannel <- fileName
 
-		logger.Debug().Msg(fmt.Sprintf("(%s) Uploaded %s - channel(csvFiles): %d, channel(uuid): %d\n", name, fileName, len(b.dataRowChannel), len(b.bucketChannel)))
+		logger.Debug().Str("worker-id", workerId).Msg(fmt.Sprintf("(%s) Uploaded %s - channel(csvFiles): %d, channel(uuid): %d", fileName, len(b.dataRowChannel), len(b.bucketChannel)))
 	}
 }
 
-func (b *BigQuery) bigqueryWorker(name string) {
+func (b *BigQuery) bigqueryWorker(workerId string) {
 	defer b.bigQueryWaitGroup.Done()
 
 	for {
 		item, ok := <-b.bucketChannel
 		if !ok {
-			logger.Info().Msg(fmt.Sprintf("(%s) Finished", name))
+			logger.Info().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 
 		utils.TryWithExponentialBackoff(func() error {
 			return b.importCSVExplicitSchema("gs://dbt_udf/" + item)
 		}, func(err error) {
-			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
+			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
-		logger.Debug().Msg(fmt.Sprintf("(%s) Imported %s - channel(uuid): %d\n", name, item, len(b.bucketChannel)))
+		logger.Debug().Str("worker-id", workerId).Msg(fmt.Sprintf("Imported %s - channel(uuid): %d", item, len(b.bucketChannel)))
 	}
 }
 
