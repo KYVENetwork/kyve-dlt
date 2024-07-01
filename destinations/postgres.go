@@ -35,23 +35,45 @@ type Postgres struct {
 	schema schema.DataSource
 }
 
-func (p *Postgres) StartProcess(schema schema.DataSource, dataRowChannel chan []schema.DataRow, waitGroup *sync.WaitGroup) {
-	p.schema = schema
-	p.dataRowChannel = dataRowChannel
-	waitGroup.Add(1)
+func (p *Postgres) Close() {
+	if err := p.db.Close(); err != nil {
+		panic(err)
+	}
+}
 
-	// Open DB
-	db, err := sql.Open("postgres", "postgresql://localhost:5432/postgres?sslmode=disable")
+func (p *Postgres) GetLatestBundleId() string {
+	stmt := fmt.Sprintf("SELECT MAX(%s) FROM %s",
+		"bundle_id",
+		p.config.TableName,
+	)
+
+	var latestBundleId string
+	err := p.db.QueryRow(stmt).Scan(&latestBundleId)
 	if err != nil {
 		panic(err)
 	}
+
+	return latestBundleId
+}
+
+func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
+	p.schema = schema
+
+	// Open DB
+	db, err := sql.Open("postgres", p.config.ConnectionUrl)
+	if err != nil {
+		panic(err)
+	}
+
 	p.db = db
-	fmt.Printf("Postgres connection established\n")
+	logger.Info().Msg("Postgres connection established")
 
 	if _, tableErr := p.db.Exec(p.schema.GetPostgresCreateTableCommand(p.config.TableName)); tableErr != nil {
 		panic(tableErr)
 	}
+}
 
+func (p *Postgres) StartProcess(waitGroup *sync.WaitGroup) {
 	p.postgresWaitGroup.Add(p.config.PostgresWorkerCount)
 	for i := 1; i <= p.config.PostgresWorkerCount; i++ {
 		go p.postgresWorker(fmt.Sprintf("Postgres - %d", i))
@@ -70,7 +92,7 @@ func (p *Postgres) postgresWorker(name string) {
 	for {
 		items, ok := <-p.dataRowChannel
 		if !ok {
-			fmt.Printf("(%s) Finished\n", name)
+			logger.Debug().Msg(fmt.Sprintf("(%s) Finished\n", name))
 			return
 		}
 		_ = items

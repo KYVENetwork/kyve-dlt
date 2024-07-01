@@ -5,11 +5,14 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
+	"google.golang.org/api/iterator"
 	"io"
+	"log"
 	"sync"
 	"time"
 
@@ -44,12 +47,50 @@ type BigQuery struct {
 	schema schema.DataSource
 }
 
-func (b *BigQuery) StartProcess(schema schema.DataSource, dataRowChannel chan []schema.DataRow, waitGroup *sync.WaitGroup) {
+func (b *BigQuery) Close() {}
 
+func (b *BigQuery) GetLatestBundleId() string {
+	ctx := context.Background()
+
+	client, err := bigquery.NewClient(ctx, b.config.ProjectId)
+	if err != nil {
+		logger.Error().Msg("failed to create BigQuery client")
+		panic(err)
+	}
+
+	stmt := fmt.Sprintf("SELECT MAX(`bundle_id`) FROM `%s.%s`", b.config.DatasetId, b.config.TableId)
+	query := client.Query(stmt)
+
+	it, err := query.Read(ctx)
+	if err != nil {
+		log.Fatalf("Query.Read: %v", err)
+	}
+
+	var latestBundleId string
+	for {
+		var row []bigquery.Value
+		err = it.Next(&row)
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("BigQuery iterator failed")
+		}
+		if row[0] != nil {
+			latestBundleId = row[0].(string)
+		}
+	}
+
+	return latestBundleId
+}
+
+func (b *BigQuery) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
 	b.schema = schema
 	b.dataRowChannel = dataRowChannel
 	b.bucketChannel = make(chan string, 4)
+}
 
+func (b *BigQuery) StartProcess(waitGroup *sync.WaitGroup) {
 	waitGroup.Add(1)
 
 	// Uploads CSV files to Google Cloud Storage
