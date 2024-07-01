@@ -205,3 +205,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 
 	return columns, nil
 }
+
+func (t TendermintPreProcessed) GetPrimaryField() string {
+	return "height"
+}

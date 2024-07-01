@@ -116,3 +116,7 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow
 
 	return columns, nil
 }
+
+func (t Tendermint) GetPrimaryField() string {
+	return "key"
+}

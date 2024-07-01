@@ -12,6 +12,7 @@ type DataSource interface {
 	GetBigQueryTimePartitioning() *bigquery.TimePartitioning
 	GetBigQueryClustering() *bigquery.Clustering
 	GetPostgresCreateTableCommand(string) string
+	GetPrimaryField() string
 }
 
 type DataRow interface {
