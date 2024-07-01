@@ -63,8 +63,8 @@ var startCmd = &cobra.Command{
 
 		var sourceSchema schema.DataSource
 		switch viper.GetString("source.schema") {
-		case "tendermint":
-			sourceSchema = schema.Tendermint{}
+		case "base":
+			sourceSchema = schema.Base{}
 		case "tendermint_preprocessed":
 			sourceSchema = schema.TendermintPreProcessed{}
 		default:
