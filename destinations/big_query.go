@@ -10,9 +10,9 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 	"io"
-	"log"
 	"sync"
 	"time"
 
@@ -49,7 +49,7 @@ type BigQuery struct {
 
 func (b *BigQuery) Close() {}
 
-func (b *BigQuery) GetLatestBundleId() string {
+func (b *BigQuery) GetLatestBundleId() int64 {
 	ctx := context.Background()
 
 	client, err := bigquery.NewClient(ctx, b.config.ProjectId)
@@ -63,10 +63,16 @@ func (b *BigQuery) GetLatestBundleId() string {
 
 	it, err := query.Read(ctx)
 	if err != nil {
-		log.Fatalf("Query.Read: %v", err)
+		// Check if the error is a NotFound error, which indicates that the table does not exist
+		var apiErr *googleapi.Error
+		if errors.As(err, &apiErr) && apiErr.Code == 404 {
+			logger.Debug().Msg("BigQuery table does not exist yet")
+			return 0
+		}
+		panic(err)
 	}
 
-	var latestBundleId string
+	var latestBundleId int64 = 0
 	for {
 		var row []bigquery.Value
 		err = it.Next(&row)
@@ -75,12 +81,12 @@ func (b *BigQuery) GetLatestBundleId() string {
 		}
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("BigQuery iterator failed")
+			return 0
 		}
 		if row[0] != nil {
-			latestBundleId = row[0].(string)
+			latestBundleId = row[0].(int64)
 		}
 	}
-
 	return latestBundleId
 }
 
@@ -121,7 +127,7 @@ func (b *BigQuery) bucketWorker(name string) {
 	for {
 		itemRows, ok := <-b.dataRowChannel
 		if !ok {
-			fmt.Printf("(%s) Finished\n", name)
+			logger.Info().Msg(fmt.Sprintf("(%s) Finished", name))
 			return
 		}
 
@@ -134,8 +140,7 @@ func (b *BigQuery) bucketWorker(name string) {
 		for _, c := range itemRows {
 			err := csvWriter.Write(c.ConvertToCSVLine())
 			if err != nil {
-				fmt.Println(err)
-				return
+				panic(err)
 			}
 		}
 		csvWriter.Flush()
@@ -160,7 +165,7 @@ func (b *BigQuery) bigqueryWorker(name string) {
 	for {
 		item, ok := <-b.bucketChannel
 		if !ok {
-			fmt.Printf("(%s) Finished\n", name)
+			logger.Info().Msg(fmt.Sprintf("(%s) Finished", name))
 			return
 		}
 

@@ -42,17 +42,12 @@ func NewSource(config SourceConfig) (Source, error) {
 	}, nil
 }
 
-func (s Source) FetchBundles(latestBundleIdStr string, handler func(bundles []Bundle, err error)) {
+func (s Source) FetchBundles(latestBundleId int64, handler func(bundles []Bundle, err error)) {
 	offset := s.fromBundleId
 
-	latestBundleId, err := strconv.ParseInt(latestBundleIdStr, 10, 64)
-	if err != nil {
-		panic(err)
-	}
-
 	if latestBundleId > s.fromBundleId {
-		offset = latestBundleId
-		logger.Info().Int64("latestBundleId", latestBundleId).Msg("set fromBundleId to latestBundleId")
+		offset = latestBundleId + 1
+		logger.Info().Int64("latestBundleId", latestBundleId+1).Msg("higher bundle_id found")
 	}
 
 	response, responseError := http.Get(

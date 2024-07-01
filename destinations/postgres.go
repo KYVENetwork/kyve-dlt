@@ -41,7 +41,7 @@ func (p *Postgres) Close() {
 	}
 }
 
-func (p *Postgres) GetLatestBundleId() string {
+func (p *Postgres) GetLatestBundleId() int64 {
 	stmt := fmt.Sprintf("SELECT MAX(%s) FROM %s",
 		"bundle_id",
 		p.config.TableName,
@@ -53,7 +53,12 @@ func (p *Postgres) GetLatestBundleId() string {
 		panic(err)
 	}
 
-	return latestBundleId
+	l, err := strconv.ParseInt(latestBundleId, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+
+	return l
 }
 
 func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
@@ -103,7 +108,7 @@ func (p *Postgres) postgresWorker(name string) {
 			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
 		})
 
-		fmt.Printf("(%s) Inserted %d rows. - channel(dataRow): %d\n", name, len(items), len(p.dataRowChannel))
+		logger.Info().Msg(fmt.Sprintf("(%s) Inserted %d rows. - channel(dataRow): %d\n", name, len(items), len(p.dataRowChannel)))
 	}
 }
 

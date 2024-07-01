@@ -12,7 +12,7 @@ var (
 
 type Destination interface {
 	Close()
-	GetLatestBundleId() string
+	GetLatestBundleId() int64
 	Initialize(schema schema.DataSource, csvChannel chan []schema.DataRow)
 	StartProcess(waitGroup *sync.WaitGroup)
 }
