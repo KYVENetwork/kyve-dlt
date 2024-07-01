@@ -79,7 +79,7 @@ var startCmd = &cobra.Command{
 
 		loader.NewLoader(loaderConfig, sourceConfig, dest).Start()
 
-		logger.Info().Msg(fmt.Sprintf("Time: %d seconds\n", time.Now().Unix()-startTime))
+		logger.Info().Msg(fmt.Sprintf("Time: %d seconds", time.Now().Unix()-startTime))
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
 

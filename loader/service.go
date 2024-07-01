@@ -15,8 +15,8 @@ var (
 
 func (loader *Loader) Start() {
 
-	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v\n", loader.sourceConfig))
-	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v\n", loader.config))
+	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
+	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
 	loader.bundlesChannel = make(chan BundlesBusItem, loader.config.ChannelSize)
 	loader.dataRowChannel = make(chan []schema.DataRow, loader.config.ChannelSize)
@@ -44,7 +44,7 @@ func (loader *Loader) Start() {
 	loader.destinationWaitGroup.Wait()
 }
 
-func (loader *Loader) bundlesCollector(latestBundleId string) {
+func (loader *Loader) bundlesCollector(latestBundleId int64) {
 	defer close(loader.bundlesChannel)
 
 	fetcher, err := collector.NewSource(loader.sourceConfig)
@@ -80,7 +80,7 @@ func (loader *Loader) dataRowWorker(name string) {
 	for {
 		item, ok := <-loader.bundlesChannel
 		if !ok {
-			logger.Info().Msg(fmt.Sprintf("(%s) Finished\n", name))
+			logger.Info().Msg(fmt.Sprintf("(%s) Finished", name))
 			return
 		}
 
