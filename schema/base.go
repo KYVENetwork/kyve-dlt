@@ -28,14 +28,12 @@ func (t BaseRow) ConvertToCSVLine() []string {
 	return []string{
 		uuid.New().String(),
 		t._dlt_extracted_at,
-		"{\"errors\":[], \"loader\": \"KYVE-DLT\"}", // airbyte meta_data
 		t.key,
 		t.value,
 		strconv.FormatInt(t.bundle_id, 10),
 	}
 }
 
-// TODO: Refactor to Base schema
 type Base struct{}
 
 func (t Base) GetBigQuerySchema() bigquery.Schema {
