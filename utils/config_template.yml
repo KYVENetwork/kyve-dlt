@@ -11,8 +11,8 @@ source:
   to_bundle_id: 100
   step_size: 20
   endpoint: "https://api.kyve.network"
-  # Column schema: tendermint (default), tendermint_preprocessed
-  schema: "tendermint"
+  # Column schema: base (default), tendermint, tendermint_preprocessed
+  schema: "base"
 
 # --- DESTINATION CONFIGURATION ---
 # Supported destinations: BigQuery, Postgres
