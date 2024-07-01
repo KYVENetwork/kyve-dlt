@@ -42,29 +42,24 @@ func (p *Postgres) Close() {
 }
 
 func (p *Postgres) GetLatestBundleId() int64 {
-	stmt := fmt.Sprintf("SELECT MAX(%s) FROM %s",
+	stmt := fmt.Sprintf("SELECT COALESCE(MAX(%s), 0) FROM %s",
 		"bundle_id",
 		p.config.TableName,
 	)
 
-	var latestBundleId string
+	var latestBundleId int64
 	err := p.db.QueryRow(stmt).Scan(&latestBundleId)
 	if err != nil {
 		panic(err)
 	}
 
-	l, err := strconv.ParseInt(latestBundleId, 10, 64)
-	if err != nil {
-		panic(err)
-	}
-
-	return l
+	return latestBundleId
 }
 
 func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
 	p.schema = schema
+	p.dataRowChannel = dataRowChannel
 
-	// Open DB
 	db, err := sql.Open("postgres", p.config.ConnectionUrl)
 	if err != nil {
 		panic(err)
@@ -113,7 +108,6 @@ func (p *Postgres) postgresWorker(name string) {
 }
 
 func (p *Postgres) bulkInsert(items []schema.DataRow) error {
-
 	columnNames := p.schema.GetCSVSchema()
 
 	argsCounter := 1
