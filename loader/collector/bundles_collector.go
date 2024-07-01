@@ -4,10 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
+)
+
+var (
+	logger = utils.DltLogger("collector")
 )
 
 func NewSource(config SourceConfig) (Source, error) {
@@ -37,14 +42,26 @@ func NewSource(config SourceConfig) (Source, error) {
 	}, nil
 }
 
-func (s Source) FetchBundles(handler func(bundles []Bundle, err error)) {
+func (s Source) FetchBundles(latestBundleIdStr string, handler func(bundles []Bundle, err error)) {
+	offset := s.fromBundleId
+
+	latestBundleId, err := strconv.ParseInt(latestBundleIdStr, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+
+	if latestBundleId > s.fromBundleId {
+		offset = latestBundleId
+		logger.Info().Int64("latestBundleId", latestBundleId).Msg("set fromBundleId to latestBundleId")
+	}
+
 	response, responseError := http.Get(
 		fmt.Sprintf(
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.offset=%d",
 			s.endpoint,
 			s.poolId,
 			s.stepSize,
-			s.fromBundleId,
+			offset,
 		))
 	if responseError != nil {
 		handler(nil, fmt.Errorf("initial bundle request failed: %s", responseError.Error()))

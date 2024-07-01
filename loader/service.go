@@ -21,8 +21,12 @@ func (loader *Loader) Start() {
 	loader.bundlesChannel = make(chan BundlesBusItem, loader.config.ChannelSize)
 	loader.dataRowChannel = make(chan []schema.DataRow, loader.config.ChannelSize)
 
+	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
+
+	latestBundleId := loader.destination.GetLatestBundleId()
+
 	//Fetches bundles from api.kyve.network
-	go loader.bundlesCollector()
+	go loader.bundlesCollector(latestBundleId)
 
 	// Downloads bundles from Arweave and converts preprocesses them
 	loader.dataRowWaitGroup.Add(loader.config.CsvWorkerCount)
@@ -30,15 +34,17 @@ func (loader *Loader) Start() {
 		go loader.dataRowWorker(fmt.Sprintf("CSV - %d", i))
 	}
 
-	loader.destination.StartProcess(loader.config.SourceSchema, loader.dataRowChannel, &loader.destinationWaitGroup)
+	loader.destination.StartProcess(&loader.destinationWaitGroup)
 
 	loader.dataRowWaitGroup.Wait()
 	close(loader.dataRowChannel)
 
+	loader.destination.Close()
+
 	loader.destinationWaitGroup.Wait()
 }
 
-func (loader *Loader) bundlesCollector() {
+func (loader *Loader) bundlesCollector(latestBundleId string) {
 	defer close(loader.bundlesChannel)
 
 	fetcher, err := collector.NewSource(loader.sourceConfig)
@@ -47,7 +53,7 @@ func (loader *Loader) bundlesCollector() {
 		panic(err)
 	}
 
-	fetcher.FetchBundles(func(bundles []collector.Bundle, err error) {
+	fetcher.FetchBundles(latestBundleId, func(bundles []collector.Bundle, err error) {
 		if err != nil {
 			logger.Error().Msg(fmt.Sprintf("Error fetching bundles: %v\nWaiting ... ", err))
 			time.Sleep(5 * time.Second)
