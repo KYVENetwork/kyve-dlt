@@ -12,14 +12,6 @@ source:
   # Column schema: base (default), tendermint_preprocessed
   schema: "base"
 
-  # ---! Only set these values when you want to load a specific range of bundles. !---
-  # ID of the first bundle that will be loaded into the destination.
-  # Default: 0 (first bundle of the pool)
-  # from_bundle_id: 0 # <-- Remove this comment if you want to set a specific start bundle
-  # ID of the last bundle that will be loaded into the destination.
-  # Default: 9223372036854775807 (process runs until all bundles are loaded)
-  # to_bundle_id: 100 # <-- Remove this comment if you want to set a specific end bundle
-
 # --- DESTINATION CONFIGURATION ---
 # Supported destinations: BigQuery, Postgres
 # (Only specify values of the selected type.)

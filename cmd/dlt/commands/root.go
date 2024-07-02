@@ -7,13 +7,15 @@ import (
 )
 
 var (
-	configPath string
-	logger     = utils.DltLogger("cmd")
+	configPath   string
+	fromBundleId int64
+	logger       = utils.DltLogger("cmd")
+	toBundleId   int64
 )
 
 var rootCmd = &cobra.Command{
-	Use:           "kyvedlt",
-	Short:         "kyvedlt",
+	Use:           "dlt",
+	Short:         "dlt",
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }

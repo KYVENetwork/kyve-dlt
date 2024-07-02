@@ -16,36 +16,22 @@ import (
 )
 
 func init() {
-	startCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
-	rootCmd.AddCommand(startCmd)
+	syncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "start bundle-id of the initial sync process")
+
+	rootCmd.AddCommand(syncCmd)
 }
 
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start the sync",
+var syncCmd = &cobra.Command{
+	Use:   "sync",
+	Short: "Start the incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := utils.LoadConfig(configPath); err != nil {
 			return
 		}
 
-		var fromBundleId int64
-		if viper.Get("source.from_bundle_id") == "" {
-			fromBundleId = 0
-		} else {
-			fromBundleId = viper.GetInt64("source.from_bundle_id")
-		}
-
-		var toBundleId int64
-		if viper.Get("source.to_bundle_id") == "" {
-			fromBundleId = int64(math.MaxInt64)
-		} else {
-			toBundleId = viper.GetInt64("source.to_bundle_id")
-		}
-
-		logger.Info().Int64("from_bundle_id", fromBundleId).Int64("to_bundle_id", toBundleId).Msg("set from and to bundle_id")
-
-		logger.Info().Msg("Starting Sync ...")
+		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("Starting incremental sync ...")
 		startTime := time.Now().Unix()
 
 		var dest destinations.Destination
@@ -73,7 +59,7 @@ var startCmd = &cobra.Command{
 		sourceConfig := collector.SourceConfig{
 			PoolId:       viper.GetInt64("source.pool_id"),
 			FromBundleId: fromBundleId,
-			ToBundleId:   toBundleId,
+			ToBundleId:   math.MaxInt64,
 			StepSize:     viper.GetInt64("source.step_size"),
 			Endpoint:     viper.GetString("source.endpoint"),
 		}
