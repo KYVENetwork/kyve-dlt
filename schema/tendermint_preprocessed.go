@@ -56,12 +56,11 @@ func (t TendermintPreProcessedRow) ConvertToCSVLine() []string {
 	return []string{
 		uuid.New().String(),
 		t._dlt_extracted_at,
-		"{\"errors\":[], \"loader\": \"KYVE-DLT\"}", // airbyte meta_data
-		t.item_type,
-		t.value,
 		t.height,
-		strconv.FormatInt(t.bundle_id, 10), // offset
+		t.item_type,
 		strconv.FormatInt(t.array_index, 10),
+		t.value,
+		strconv.FormatInt(t.bundle_id, 10),
 	}
 }
 
@@ -71,10 +70,10 @@ func (t TendermintPreProcessed) GetBigQuerySchema() bigquery.Schema {
 	return bigquery.Schema{
 		{Name: "_dlt_raw_id", Type: bigquery.StringFieldType},
 		{Name: "_dlt_extracted_at", Type: bigquery.TimestampFieldType},
-		{Name: "type", Type: bigquery.StringFieldType},
-		{Name: "value", Type: bigquery.JSONFieldType},
 		{Name: "height", Type: bigquery.IntegerFieldType},
+		{Name: "type", Type: bigquery.StringFieldType},
 		{Name: "array_index", Type: bigquery.IntegerFieldType},
+		{Name: "value", Type: bigquery.JSONFieldType},
 		{Name: "bundle_id", Type: bigquery.IntegerFieldType},
 	}
 }
@@ -94,10 +93,10 @@ func (t TendermintPreProcessed) GetCSVSchema() []string {
 	return []string{
 		"_dlt_raw_id",
 		"_dlt_extracted_at",
-		"type",
-		"value",
 		"height",
+		"type",
 		"array_index",
+		"value",
 		"bundle_id",
 	}
 }
@@ -107,12 +106,12 @@ func (t TendermintPreProcessed) GetPostgresCreateTableCommand(name string) strin
 CREATE TABLE IF NOT EXISTS %s (
     _dlt_raw_id varchar NOT NULL,
     _dlt_extracted_at timestamp NOT NULL,
-    "type" varchar, 
-    "value" varchar, 
     "height" integer NOT NULL, 
-    "array_index" integer, 
+    "type" varchar, 
+    "array_index" integer NOT NULL, 
+    "value" varchar, 
     "bundle_id" integer NOT NULL, 
-    PRIMARY KEY (key)
+    PRIMARY KEY (height, type, array_index)
     )
     `, name)
 }
@@ -152,13 +151,11 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 			return nil, err
 		}
 
-		// TODO put array_index to null on type null
-
 		bundleId, _ := strconv.ParseUint(bundle.Id, 10, 64)
 		columns = append(columns, TendermintPreProcessedRow{
 			_dlt_raw_id:       "",
 			_dlt_extracted_at: time.Now().Format(time.RFC3339),
-			item_type:         "",
+			item_type:         "block",
 			value:             string(prunedJson),
 			height:            kyveItem.Key,
 			array_index:       0,

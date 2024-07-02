@@ -155,7 +155,7 @@ func (b *BigQuery) bucketWorker(workerId string) {
 
 		b.bucketChannel <- fileName
 
-		logger.Debug().Str("worker-id", workerId).Msg(fmt.Sprintf("(%s) Uploaded %s - channel(csvFiles): %d, channel(uuid): %d", fileName, len(b.dataRowChannel), len(b.bucketChannel)))
+		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("Uploaded %s - channel(csvFiles): %d, channel(uuid): %d", fileName, len(b.dataRowChannel), len(b.bucketChannel)))
 	}
 }
 
@@ -175,7 +175,7 @@ func (b *BigQuery) bigqueryWorker(workerId string) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
-		logger.Debug().Str("worker-id", workerId).Msg(fmt.Sprintf("Imported %s - channel(uuid): %d", item, len(b.bucketChannel)))
+		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("Imported %s - channel(uuid): %d", item, len(b.bucketChannel)))
 	}
 }
 
@@ -213,8 +213,6 @@ func (b *BigQuery) uploadCloudBucket(bucket, object string, buf io.Reader) error
 	if err := wc.Close(); err != nil {
 		return fmt.Errorf("Writer.Close: %w", err)
 	}
-
-	logger.Info().Msg(fmt.Sprintf("bundles: %d, csv: %d", len(b.bucketChannel)))
 
 	return nil
 }
