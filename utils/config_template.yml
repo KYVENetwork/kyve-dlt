@@ -5,33 +5,45 @@ log_level: "info"
 # --- SOURCE CONFIGURATION ---
 # A source is a KYVE pool including the validated data that will be loaded into the destination.
 # Supported pool runtimes: @kyvejs/tendermint
-source:
-  pool_id: 0
-  step_size: 1
-  endpoint: "https://api.kyve.network"
-  # Column schema: base (default), tendermint, tendermint_preprocessed
-  schema: "base"
+sources:
+  - name: cosmos
+    pool_id: 0
+    step_size: 20
+    endpoint: "https://api.kyve.network"
+    # Column schema: base (default), tendermint, tendermint_preprocessed
+    schema: "tendermint"
+  - name: osmosis
+    pool_id: 1
+    step_size: 20
+    endpoint: "https://api.kyve.network"
+    # Column schema: base (default), tendermint, tendermint_preprocessed
+    schema: "tendermint_preprocessed"
 
 # --- DESTINATION CONFIGURATION ---
-# Supported destinations: BigQuery, Postgres
+# Supported destinations types: big_query, postgres
 # (Only specify values of the selected type.)
-destination:
-  # Destination type: big_query (default), postgres
-  type: "big_query"
-
-  # BigQuery config
-  big_query:
+destinations:
+  - name: big_query_1
+    type: "big_query"
     project_id: ""
     dataset_id: ""
     table_id: ""
-    big_query_worker_count: 1
-    bucket_worker_count: 1
+    worker_count: 2
+    bucket_worker_count: 2
 
-  # Postgres config
-  postgres:
+  - name: postgres_1
+    type: "postgres"
     connection_url: ""
     table_name: ""
-    worker_count: 2
+    worker_count: 4
+
+# --- CONNECTION CONFIGURATION ---
+# Connections are mappings of source and destination.
+# A connection is required for all sync processes.
+connections:
+  - name: connection_1
+    source: cosmos
+    destination: big_query_1
 
 # --- LOADER CONFIGURATION ---
 loader:

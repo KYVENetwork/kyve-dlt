@@ -30,19 +30,21 @@ command, a default config is created under `path-to/kyve-dlt/.kyve-dlt/config.ym
 includes some example values and explanations. After specifying the KYVE source and the 
 BigQuery or Postgres credentials, a sync can be started.
 
+For each sync process, a connection consisting of a source and a destination is required that can be defined in the config.
+
 ### `sync`
 **Usage:**
 ```bash
-dlt sync
+dlt sync --connection connection_1
 ```
 To start the incremental sync from a certain height, simple use the `--from-bundle-id` flag. This won't affect the incremental sync, but only the initial start bundle ID of the dataset.
 
 ### `partial-sync`
 **Usage:**
 ```bash
-dlt partial-sync --from-bundle-id 0 --to-bundle-id 99
+dlt partial-sync --connection connection_1 --from-bundle-id 0 --to-bundle-id 99
 ```
-The partial sync expects two flags, `--from-bundle-id` and `--to-bundle-id`. In this example, the first 100 bundles of a defined KYVE source are loaded into the destination. `dlt` doesn't check the destination for existing bundles or duplicates.
+The partial sync expects two further flags, `--from-bundle-id` and `--to-bundle-id`. In this example, the first 100 bundles of a defined KYVE source are loaded into the destination. `dlt` doesn't check the destination for existing bundles or duplicates.
 
 ## Schemas
 - Base (supports all KYVE data pools)
