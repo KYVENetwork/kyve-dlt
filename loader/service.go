@@ -31,7 +31,7 @@ func (loader *Loader) Start() {
 	}
 
 	if loader.latestBundleId != nil && *loader.latestBundleId >= loader.sourceConfig.ToBundleId {
-		logger.Info().Int64("id", *loader.latestBundleId).Msg("latest bundle_id equals config to_bundle_id, exiting...")
+		logger.Info().Int64("to_bundle_id", loader.sourceConfig.ToBundleId).Int64("latest_bundle_id", *loader.latestBundleId).Msg("latest bundle_id >= config to_bundle_id, exiting...")
 		return
 	}
 
@@ -107,13 +107,6 @@ func (loader *Loader) dataRowWorker(name string) {
 
 		items := make([]schema.DataRow, 0)
 		for _, k := range item.bundles {
-			bundleId, _ := strconv.ParseInt(k.Id, 10, 64)
-
-			if bundleId > loader.sourceConfig.ToBundleId {
-				logger.Info().Int64("bundle-id", bundleId).Msg(fmt.Sprintf("(%s) Finished: Reached to_bundle_id", name))
-				return
-			}
-
 			utils.TryWithExponentialBackoff(func() error {
 				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k)
 				if err != nil {

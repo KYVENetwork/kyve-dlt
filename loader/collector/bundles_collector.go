@@ -62,17 +62,37 @@ func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err er
 		handler(nil, fmt.Errorf("initial bundle request failed: %s", responseError.Error()))
 	}
 
-	if len(initialBundles) > int(s.toBundleId-s.fromBundleId+1) {
-		// Already finished
-		handler(initialBundles[:s.toBundleId-s.fromBundleId+1], nil)
+	highestBundleId, err := strconv.ParseInt(initialBundles[len(initialBundles)-1].Id, 10, 64)
+	if err != nil {
+		handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", err.Error()))
 		return
 	}
-	handler(initialBundles, nil)
+
+	if highestBundleId > s.toBundleId {
+		logger.Info().Msg("reached to_bundle_id")
+
+		var bundles []Bundle
+		for _, b := range initialBundles {
+			bundleId, err := strconv.ParseInt(b.Id, 10, 64)
+			if err != nil {
+				handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", err.Error()))
+				return
+			}
+			if bundleId <= s.toBundleId {
+				bundles = append(bundles, b)
+			} else {
+				break
+			}
+		}
+		handler(bundles, nil)
+		return
+	} else {
+		handler(initialBundles, nil)
+	}
 
 	// Iterate remaining bundles
-	currentBundleId := s.fromBundleId
+	currentBundleId := offset
 	for currentBundleId < s.toBundleId {
-
 		newBundles, nextKey, err := s.fetch(paginationKey)
 		if err != nil {
 			handler(nil, err)
@@ -101,7 +121,6 @@ func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err er
 		}
 		paginationKey = nextKey
 	}
-
 }
 
 func (s Source) fetch(paginationKey string) ([]Bundle, string, error) {
