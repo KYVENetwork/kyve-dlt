@@ -30,7 +30,7 @@ func AwaitEnoughMemory(name string) {
 				fmt.Sprintf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc)) +
 				fmt.Sprintf("\tSys = %v MiB", bToMb(m.Sys)) +
 				fmt.Sprintf("\tNumGC = %v\n", m.NumGC) +
-				fmt.Sprintf("(%s) Memory limit reached (%d MiB): Waiting 10 seconds ... \n", name, m.Alloc),
+				fmt.Sprintf("(%s) Memory limit reached (%d MiB): Waiting 10 seconds ...", name, m.Alloc),
 		)
 
 		logger.Debug().
@@ -38,7 +38,7 @@ func AwaitEnoughMemory(name string) {
 			Str("total-alloc", fmt.Sprintf("%v MiB", bToMb(m.TotalAlloc))).
 			Str("sys", fmt.Sprintf("%v MiB", bToMb(m.Sys))).
 			Str("num-gc", fmt.Sprintf("%v", m.NumGC)).
-			Msg(fmt.Sprintf("SYSINFO: (%s) Memory limit reached (%d MiB): Waiting 10 seconds ... \n", name, m.Alloc))
+			Msg(fmt.Sprintf("SYSINFO: (%s) Memory limit reached (%d MiB): Waiting 10 seconds ...", name, m.Alloc))
 
 		runtime.GC()
 		time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Second)

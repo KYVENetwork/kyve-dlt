@@ -23,6 +23,8 @@ type Loader struct {
 	config       Config
 	sourceConfig collector.SourceConfig
 	destination  destinations.Destination
+
+	latestBundleId *int64
 }
 
 type Config struct {

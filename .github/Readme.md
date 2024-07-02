@@ -1,15 +1,54 @@
-# KYVE DLT
+<p align="center">
+    <h1>KYVE - DataLoadTool</h1>
+    <strong>Load datasets from KYVE pools to BigQuery and Postgres</strong>
+</p>
 
-#### Kyve - Data Load Tool
+## Build from Source
+```bash
+git clone https://github.com/KYVENetwork/kyve-dlt.git
+cd kyve-dlt
+make build
+```
 
-Load datasets from KYVE pools to any supported destination. 
+This will build **dlt** in /build directory. Afterward, you may want to put it into your machine's PATH like as follows:
+```bash
+cp build/dlt ~/go/bin/dlt
+```
+
+## Usage
+Depending on what you want to achieve with `dlt` there are two commands available. A quick summary of what they do
+and when to use them can be found below:
+
+|                                 | Description                                                                                                                                                                                                                                                                                 | Recommendation                                                                                                                                    |
+|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| **sync**                        | Starts an incremental sync based on a start bundle ID - first bundle of the pool by default. The sync runs until all bundles are loaded into the destination. When executing `dlt sync` again, it checks the latest loaded bundle ID in order to incrementally extend the existing dataset. | Generally recommended to sync a whole pool dataset into a destination. Can be used with a cronjob to keep the dataset in the destination updated. |
+| **partial-sync**                | Starts a partial sync from a start to an end bundle ID. Doesn't check the destination for already loaded bundles or duplicates.                                                                                                                                                             | Recommended to sync a specified range of bundles or to back-fill an existing dataset.                                                             |
+
+### Config
+The **dlt** config is used to define the source and the destination. With the first executed
+command, a default config is created under `path-to/kyve-dlt/.kyve-dlt/config.yml`, which
+includes some example values and explanations. After specifying the KYVE source and the 
+BigQuery or Postgres credentials, a sync can be started.
+
+### `sync`
+**Usage:**
+```bash
+dlt sync
+```
+To start the incremental sync from a certain height, simple use the `--from-bundle-id` flag. This won't affect the incremental sync, but only the initial start bundle ID of the dataset.
+
+### `partial-sync`
+**Usage:**
+```bash
+dlt partial-sync --from-bundle-id 0 --to-bundle-id 99
+```
+The partial sync expects two flags, `--from-bundle-id` and `--to-bundle-id`. In this example, the first 100 bundles of a defined KYVE source are loaded into the destination. `dlt` doesn't check the destination for existing bundles or duplicates.
 
 ## Schemas
-
+- Base (supports all KYVE data pools)
 - Tendermint
 - TendermintPreprocessed (block is split into block_results, end_blocks, etc.)
 
-## Destinations
-
+## Supported Destinations
 - BigQuery
 - Postgres
