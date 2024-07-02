@@ -9,7 +9,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"strings"
 	"time"
 
 	_ "net/http/pprof"
@@ -93,23 +92,7 @@ var partialSyncCmd = &cobra.Command{
 			SourceSchema:   sourceSchema,
 		}
 
-		if !y {
-			answer := ""
-
-			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded into %v?\n[y/N]: ", fromBundleId, toBundleId, viper.GetString("destination.type"))
-
-			if _, err := fmt.Scan(&answer); err != nil {
-				logger.Error().Str("err", err.Error()).Msg("failed to read user input")
-				return
-			}
-
-			if strings.ToLower(answer) != "y" {
-				logger.Info().Msg("aborted")
-				return
-			}
-		}
-
-		loader.NewLoader(loaderConfig, sourceConfig, dest).Start()
+		loader.NewLoader(loaderConfig, sourceConfig, dest).Start(y)
 
 		logger.Info().Msg(fmt.Sprintf("Time: %d seconds", time.Now().Unix()-startTime))
 	},

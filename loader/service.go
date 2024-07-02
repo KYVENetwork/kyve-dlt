@@ -5,7 +5,9 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
+	"github.com/spf13/viper"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -13,7 +15,7 @@ var (
 	logger = utils.DltLogger("loader")
 )
 
-func (loader *Loader) Start() {
+func (loader *Loader) Start(y bool) {
 	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
@@ -26,13 +28,47 @@ func (loader *Loader) Start() {
 		loader.latestBundleId = loader.destination.GetLatestBundleId()
 
 		if loader.latestBundleId != nil {
-			logger.Info().Str("id", strconv.FormatInt(*loader.latestBundleId, 10)).Msg("set latestBundleId")
+			logger.Debug().Str("id", strconv.FormatInt(*loader.latestBundleId, 10)).Msg("set latestBundleId")
 		} else {
 			logger.Info().Msg("detected initial sync")
 		}
 
 		if loader.latestBundleId != nil && *loader.latestBundleId >= loader.sourceConfig.ToBundleId {
 			logger.Info().Int64("to_bundle_id", loader.sourceConfig.ToBundleId).Int64("latest_bundle_id", *loader.latestBundleId).Msg("latest bundle_id >= config to_bundle_id, exiting...")
+			return
+		}
+
+		if !y {
+			answer := ""
+
+			from := loader.sourceConfig.FromBundleId
+			if loader.latestBundleId != nil {
+				from = *loader.latestBundleId + 1
+			}
+			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded into %v until all bundles are synced?\n[y/N]: ", from, viper.GetString("destination.type"))
+
+			if _, err := fmt.Scan(&answer); err != nil {
+				logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+				return
+			}
+
+			if strings.ToLower(answer) != "y" {
+				logger.Error().Msg("aborted")
+				return
+			}
+		}
+	} else {
+		answer := ""
+
+		fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded into %v?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId, viper.GetString("destination.type"))
+
+		if _, err := fmt.Scan(&answer); err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+			return
+		}
+
+		if strings.ToLower(answer) != "y" {
+			logger.Info().Msg("aborted")
 			return
 		}
 	}
@@ -68,7 +104,7 @@ func (loader *Loader) bundlesCollector() {
 	offset := loader.sourceConfig.FromBundleId
 	if loader.latestBundleId != nil {
 		offset = *loader.latestBundleId + 1
-		logger.Info().Int64("id", offset).Msg("using latest_bundle_id as offset")
+		logger.Debug().Int64("id", offset).Msg("using latest_bundle_id + 1 as offset")
 	}
 
 	fetcher.FetchBundles(offset, func(bundles []collector.Bundle, err error) {
