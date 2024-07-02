@@ -8,7 +8,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"time"
 
 	_ "net/http/pprof"
@@ -16,6 +15,11 @@ import (
 
 func init() {
 	partialSyncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+
+	partialSyncCmd.Flags().StringVar(&connection, "connection", "", "name of the connection to sync")
+	if err := partialSyncCmd.MarkFlagRequired("connection"); err != nil {
+		panic(fmt.Errorf("flag 'connection' should be required: %w", err))
+	}
 
 	partialSyncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "ID of first bundle to load (inclusive)")
 	if err := partialSyncCmd.MarkFlagRequired("from-bundle-id"); err != nil {
@@ -36,7 +40,14 @@ var partialSyncCmd = &cobra.Command{
 	Use:   "partial-sync",
 	Short: "Load a specific range of bundles",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := utils.LoadConfig(configPath); err != nil {
+		config, err := utils.LoadConfig(configPath)
+		if err != nil {
+			return
+		}
+
+		source, destination, err := utils.GetConnectionDetails(config, connection)
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to read connection")
 			return
 		}
 
@@ -44,38 +55,38 @@ var partialSyncCmd = &cobra.Command{
 		startTime := time.Now().Unix()
 
 		var dest destinations.Destination
-		switch viper.GetString("destination.type") {
+		switch destination.Type {
 		case "big_query":
 			bigQueryDest := destinations.NewBigQuery(destinations.BigQueryConfig{
-				ProjectId:           viper.GetString("destination.big_query.project_id"),
-				DatasetId:           viper.GetString("destination.big_query.dataset_id"),
-				TableId:             viper.GetString("destination.big_query.table_id"),
-				BigQueryWorkerCount: viper.GetInt("destination.big_query.big_query_worker_count"),
-				BucketWorkerCount:   viper.GetInt("destination.big_query.bucket_worker_count"),
+				ProjectId:           destination.ProjectID,
+				DatasetId:           destination.DatasetID,
+				TableId:             destination.TableID,
+				BigQueryWorkerCount: destination.WorkerCount,
+				BucketWorkerCount:   destination.BucketWorkerCount,
 			})
 			dest = &bigQueryDest
 		case "postgres":
 			postgresDest := destinations.NewPostgres(destinations.PostgresConfig{
-				ConnectionUrl:       viper.GetString("destination.postgres.connection_url"),
-				TableName:           viper.GetString("destination.postgres.table_name"),
-				PostgresWorkerCount: viper.GetInt("destination.postgres.worker_count"),
+				ConnectionUrl:       destination.ConnectionURL,
+				TableName:           destination.TableName,
+				PostgresWorkerCount: destination.WorkerCount,
 			})
 			dest = &postgresDest
 		default:
-			panic(fmt.Errorf("destination type not supported: %v", viper.GetString("destination.type")))
+			panic(fmt.Errorf("destination type not supported: %v", destination.Type))
 		}
 
 		sourceConfig := collector.SourceConfig{
-			PoolId:       viper.GetInt64("source.pool_id"),
+			PoolId:       int64(source.PoolID),
 			FromBundleId: fromBundleId,
 			ToBundleId:   toBundleId,
-			StepSize:     viper.GetInt64("source.step_size"),
-			Endpoint:     viper.GetString("source.endpoint"),
+			StepSize:     int64(source.StepSize),
+			Endpoint:     source.Endpoint,
 			PartialSync:  true,
 		}
 
 		var sourceSchema schema.DataSource
-		switch viper.GetString("source.schema") {
+		switch source.Schema {
 		case "base":
 			sourceSchema = schema.Base{}
 		case "tendermint":
@@ -83,12 +94,12 @@ var partialSyncCmd = &cobra.Command{
 		case "tendermint_preprocessed":
 			sourceSchema = schema.TendermintPreProcessed{}
 		default:
-			panic(fmt.Errorf("source schema not supported: %v", viper.GetString("source.schema")))
+			panic(fmt.Errorf("source schema not supported: %v", source.Schema))
 		}
 
 		loaderConfig := loader.Config{
-			ChannelSize:    viper.GetInt("loader.channel_size"),
-			CsvWorkerCount: viper.GetInt("loader.csv_worker_count"),
+			ChannelSize:    config.Loader.ChannelSize,
+			CsvWorkerCount: config.Loader.CSVWorkerCount,
 			SourceSchema:   sourceSchema,
 		}
 

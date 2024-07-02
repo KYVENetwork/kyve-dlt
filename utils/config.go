@@ -4,8 +4,8 @@ import (
 	_ "embed"
 	"fmt"
 	"github.com/rs/zerolog"
-	"github.com/spf13/viper"
-	"math"
+	"gopkg.in/yaml.v3"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -17,14 +17,60 @@ var (
 //go:embed config_template.yml
 var defaultConfig []byte
 
-func loadDefaultConfigValues() {
-	viper.SetDefault("source.from_bundle_id", 0)
-	viper.SetDefault("source.to_bundle_id", int64(math.MaxInt64))
+func GetConnectionDetails(config *Config, connectionName string) (Source, Destination, error) {
+	var source Source
+	var destination Destination
+	var connectionFound, sourceFound, destinationFound bool
+	var sourceName, destinationName string
+
+	for _, connection := range config.Connections {
+		if connection.Name == connectionName {
+			connectionFound = true
+			sourceName = connection.Source
+			destinationName = connection.Destination
+			for _, src := range config.Sources {
+				if src.Name == sourceName {
+					source = src
+					sourceFound = true
+					break
+				}
+			}
+			for _, dst := range config.Destinations {
+				if dst.Name == destinationName {
+					destination = dst
+					destinationFound = true
+					break
+				}
+			}
+		}
+	}
+
+	if !connectionFound {
+		return Source{}, Destination{}, fmt.Errorf("connection %s not found", connectionName)
+	}
+
+	if !sourceFound {
+		return Source{}, Destination{}, fmt.Errorf("source %s not found for connection %s", sourceName, connectionName)
+	}
+
+	if !destinationFound {
+		return Source{}, Destination{}, fmt.Errorf("destination %s not found for connection %s", destinationName, connectionName)
+	}
+
+	return source, destination, nil
 }
 
-func LoadConfig(configPath string) error {
-	loadDefaultConfigValues()
-	viper.SetConfigFile(configPath)
+func LoadConfig(configPath string) (*Config, error) {
+	data, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		logger.Error().Str("err", err.Error()).Msg("failed to read config")
+	}
+
+	var config Config
+	err = yaml.Unmarshal(data, &config)
+	if err != nil {
+		logger.Error().Str("err", err.Error()).Msg("failed to unmarshal config")
+	}
 
 	// Create default config if config doesn't exist
 	if _, err := os.Stat(configPath); err != nil {
@@ -49,20 +95,15 @@ func LoadConfig(configPath string) error {
 
 		logger.Info().Msg("created default config file, restart process")
 
-		return fmt.Errorf("could not find config file")
+		return nil, fmt.Errorf("could not find config file")
 	}
+	setLogLevel(config.LogLevel)
 
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("failed to read config file: %w", err))
-	}
-
-	setLogLevel()
-	return nil
+	return &config, nil
 }
 
-func setLogLevel() {
-	switch viper.GetString("log_level") {
+func setLogLevel(logLevel string) {
+	switch logLevel {
 	case "info":
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	case "debug":

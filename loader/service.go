@@ -5,7 +5,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
-	"github.com/spf13/viper"
 	"strconv"
 	"strings"
 	"time"
@@ -38,14 +37,31 @@ func (loader *Loader) Start(y bool) {
 			return
 		}
 
+		if !loader.sourceConfig.PartialSync {
+			if !y {
+				answer := ""
+
+				from := loader.sourceConfig.FromBundleId
+				if loader.latestBundleId != nil {
+					from = *loader.latestBundleId + 1
+				}
+				fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded until all bundles are synced?\n\u001B[36m[y/N]\u001B[0m: ", from)
+				if _, err := fmt.Scan(&answer); err != nil {
+					logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+					return
+				}
+
+				if strings.ToLower(answer) != "y" {
+					logger.Error().Msg("aborted")
+					return
+				}
+			}
+		}
+	} else {
 		if !y {
 			answer := ""
 
-			from := loader.sourceConfig.FromBundleId
-			if loader.latestBundleId != nil {
-				from = *loader.latestBundleId + 1
-			}
-			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded into %v until all bundles are synced?\n[y/N]: ", from, viper.GetString("destination.type"))
+			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId)
 
 			if _, err := fmt.Scan(&answer); err != nil {
 				logger.Error().Str("err", err.Error()).Msg("failed to read user input")
@@ -53,23 +69,9 @@ func (loader *Loader) Start(y bool) {
 			}
 
 			if strings.ToLower(answer) != "y" {
-				logger.Error().Msg("aborted")
+				logger.Info().Msg("aborted")
 				return
 			}
-		}
-	} else {
-		answer := ""
-
-		fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded into %v?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId, viper.GetString("destination.type"))
-
-		if _, err := fmt.Scan(&answer); err != nil {
-			logger.Error().Str("err", err.Error()).Msg("failed to read user input")
-			return
-		}
-
-		if strings.ToLower(answer) != "y" {
-			logger.Info().Msg("aborted")
-			return
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 
 var (
 	configPath   string
+	connection   string
 	fromBundleId int64
 	logger       = utils.DltLogger("cmd")
 	toBundleId   int64

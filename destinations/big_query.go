@@ -180,7 +180,6 @@ func (b *BigQuery) bigqueryWorker(workerId string) {
 }
 
 func (b *BigQuery) uploadCloudBucket(bucket, object string, buf io.Reader) error {
-
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {

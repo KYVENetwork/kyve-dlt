@@ -22,7 +22,7 @@ func AwaitEnoughMemory(name string) {
 		Str("num-gc", fmt.Sprintf("%v", m.NumGC)).
 		Msg("SYSINFO")
 
-	for m.Alloc > 200*1024*1024*1024 {
+	for m.Alloc > 20*1024*1024*1024 {
 		runtime.ReadMemStats(&m)
 
 		logger.Debug().Msg(
