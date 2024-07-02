@@ -35,26 +35,49 @@ type Postgres struct {
 	schema schema.DataSource
 }
 
-func (p *Postgres) StartProcess(schema schema.DataSource, dataRowChannel chan []schema.DataRow, waitGroup *sync.WaitGroup) {
-	p.schema = schema
-	p.dataRowChannel = dataRowChannel
-	waitGroup.Add(1)
+func (p *Postgres) Close() {
+	if err := p.db.Close(); err != nil {
+		panic(err)
+	}
+}
 
-	// Open DB
-	db, err := sql.Open("postgres", "postgresql://localhost:5432/postgres?sslmode=disable")
+func (p *Postgres) GetLatestBundleId() *int64 {
+	stmt := fmt.Sprintf("SELECT MAX(%s) FROM %s",
+		"bundle_id",
+		p.config.TableName,
+	)
+
+	var latestBundleId *int64
+	err := p.db.QueryRow(stmt).Scan(&latestBundleId)
 	if err != nil {
 		panic(err)
 	}
+
+	return latestBundleId
+}
+
+func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
+	p.schema = schema
+	p.dataRowChannel = dataRowChannel
+
+	db, err := sql.Open("postgres", p.config.ConnectionUrl)
+	if err != nil {
+		panic(err)
+	}
+
 	p.db = db
-	fmt.Printf("Postgres connection established\n")
+	logger.Info().Msg("Postgres connection established")
 
 	if _, tableErr := p.db.Exec(p.schema.GetPostgresCreateTableCommand(p.config.TableName)); tableErr != nil {
 		panic(tableErr)
 	}
+}
 
+func (p *Postgres) StartProcess(waitGroup *sync.WaitGroup) {
+	waitGroup.Add(1)
 	p.postgresWaitGroup.Add(p.config.PostgresWorkerCount)
 	for i := 1; i <= p.config.PostgresWorkerCount; i++ {
-		go p.postgresWorker(fmt.Sprintf("Postgres - %d", i))
+		go p.postgresWorker(fmt.Sprintf("postgres-%d", i))
 	}
 
 	go func() {
@@ -64,13 +87,13 @@ func (p *Postgres) StartProcess(schema schema.DataSource, dataRowChannel chan []
 	}()
 }
 
-func (p *Postgres) postgresWorker(name string) {
+func (p *Postgres) postgresWorker(workerId string) {
 	defer p.postgresWaitGroup.Done()
 
 	for {
 		items, ok := <-p.dataRowChannel
 		if !ok {
-			fmt.Printf("(%s) Finished\n", name)
+			logger.Debug().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 		_ = items
@@ -78,15 +101,14 @@ func (p *Postgres) postgresWorker(name string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return p.bulkInsert(items)
 		}, func(err error) {
-			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
+			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
 		})
 
-		fmt.Printf("(%s) Inserted %d rows. - channel(dataRow): %d\n", name, len(items), len(p.dataRowChannel))
+		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("Inserted %d rows. - channel(dataRow): %d", len(items), len(p.dataRowChannel)))
 	}
 }
 
 func (p *Postgres) bulkInsert(items []schema.DataRow) error {
-
 	columnNames := p.schema.GetCSVSchema()
 
 	argsCounter := 1

@@ -11,82 +11,82 @@ import (
 	"time"
 )
 
-type TendermintItem struct {
+type BaseItem struct {
 	Key   string          `json:"key"`
 	Value json.RawMessage `json:"value"`
 }
 
-type TendermintRow struct {
+type BaseRow struct {
 	_dlt_raw_id       string
 	_dlt_extracted_at string
-	height            int64
+	key               string
 	value             string
 	bundle_id         int64
 }
 
-func (t TendermintRow) ConvertToCSVLine() []string {
+func (t BaseRow) ConvertToCSVLine() []string {
 	return []string{
 		uuid.New().String(),
 		t._dlt_extracted_at,
-		strconv.FormatInt(t.height, 10),
+		t.key,
 		t.value,
 		strconv.FormatInt(t.bundle_id, 10),
 	}
 }
 
-type Tendermint struct{}
+type Base struct{}
 
-func (t Tendermint) GetBigQuerySchema() bigquery.Schema {
+func (t Base) GetBigQuerySchema() bigquery.Schema {
 	return bigquery.Schema{
 		{Name: "_dlt_raw_id", Type: bigquery.StringFieldType},
 		{Name: "_dlt_extracted_at", Type: bigquery.TimestampFieldType},
-		{Name: "height", Type: bigquery.IntegerFieldType},
+		{Name: "key", Type: bigquery.StringFieldType},
 		{Name: "value", Type: bigquery.JSONFieldType},
 		{Name: "bundle_id", Type: bigquery.IntegerFieldType},
 	}
 }
 
-func (t Tendermint) GetBigQueryTimePartitioning() *bigquery.TimePartitioning {
+func (t Base) GetBigQueryTimePartitioning() *bigquery.TimePartitioning {
 	return &bigquery.TimePartitioning{
 		Field: "_dlt_extracted_at",
 		Type:  bigquery.DayPartitioningType,
 	}
 }
 
-func (t Tendermint) GetBigQueryClustering() *bigquery.Clustering {
+func (t Base) GetBigQueryClustering() *bigquery.Clustering {
 	return &bigquery.Clustering{Fields: []string{"_dlt_extracted_at"}}
 }
 
-func (t Tendermint) GetCSVSchema() []string {
+func (t Base) GetCSVSchema() []string {
 	return []string{
 		"_dlt_raw_id",
 		"_dlt_extracted_at",
-		"height",
+		"key",
 		"value",
 		"bundle_id",
 	}
 }
 
-func (t Tendermint) GetPostgresCreateTableCommand(name string) string {
+func (t Base) GetPostgresCreateTableCommand(name string) string {
 	return fmt.Sprintf(`
 CREATE TABLE IF NOT EXISTS %s (
     _dlt_raw_id varchar NOT NULL,
     _dlt_extracted_at timestamp NOT NULL,
-    "height" integer NOT NULL, 
+    "key" varchar NOT NULL, 
     "value" varchar, 
     "bundle_id" integer NOT NULL, 
-    PRIMARY KEY (height)
+    PRIMARY KEY (key)
     )
     `, name)
 }
 
-func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error) {
+func (t Base) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error) {
 	bundleBuffer, err := downloadBundle(bundle)
 	if err != nil {
 		return nil, err
 	}
 
-	var items []TendermintItem
+	var items []BaseItem
 	err = json.Unmarshal(bundleBuffer.Bytes(), &items)
 	if err != nil {
 		return nil, err
@@ -98,20 +98,15 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow
 	for _, kyveItem := range items {
 		utils.AwaitEnoughMemory("TODO")
 
-		height, err := strconv.ParseUint(kyveItem.Key, 10, 64)
-		if err != nil {
-			panic(err)
-		}
-
 		jsonValue, err := json.Marshal(kyveItem.Value)
 		if err != nil {
 			return nil, err
 		}
-		columns = append(columns, TendermintRow{
+		columns = append(columns, BaseRow{
 			_dlt_raw_id:       "",
 			_dlt_extracted_at: time.Now().Format(time.RFC3339),
 			value:             string(jsonValue),
-			height:            int64(height),
+			key:               kyveItem.Key,
 			bundle_id:         int64(bundleId),
 		})
 

@@ -5,21 +5,73 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
+	"github.com/spf13/viper"
 	"strconv"
+	"strings"
 	"time"
 )
 
 var (
-	logger = utils.DltLogger("CSV")
+	logger = utils.DltLogger("loader")
 )
 
-func (loader *Loader) Start() {
-
-	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v\n", loader.sourceConfig))
-	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v\n", loader.config))
+func (loader *Loader) Start(y bool) {
+	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
+	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
 	loader.bundlesChannel = make(chan BundlesBusItem, loader.config.ChannelSize)
 	loader.dataRowChannel = make(chan []schema.DataRow, loader.config.ChannelSize)
+
+	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
+
+	if !loader.sourceConfig.PartialSync {
+		loader.latestBundleId = loader.destination.GetLatestBundleId()
+
+		if loader.latestBundleId != nil {
+			logger.Debug().Str("id", strconv.FormatInt(*loader.latestBundleId, 10)).Msg("set latestBundleId")
+		} else {
+			logger.Info().Msg("detected initial sync")
+		}
+
+		if loader.latestBundleId != nil && *loader.latestBundleId >= loader.sourceConfig.ToBundleId {
+			logger.Info().Int64("to_bundle_id", loader.sourceConfig.ToBundleId).Int64("latest_bundle_id", *loader.latestBundleId).Msg("latest bundle_id >= config to_bundle_id, exiting...")
+			return
+		}
+
+		if !y {
+			answer := ""
+
+			from := loader.sourceConfig.FromBundleId
+			if loader.latestBundleId != nil {
+				from = *loader.latestBundleId + 1
+			}
+			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded into %v until all bundles are synced?\n[y/N]: ", from, viper.GetString("destination.type"))
+
+			if _, err := fmt.Scan(&answer); err != nil {
+				logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+				return
+			}
+
+			if strings.ToLower(answer) != "y" {
+				logger.Error().Msg("aborted")
+				return
+			}
+		}
+	} else {
+		answer := ""
+
+		fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded into %v?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId, viper.GetString("destination.type"))
+
+		if _, err := fmt.Scan(&answer); err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+			return
+		}
+
+		if strings.ToLower(answer) != "y" {
+			logger.Info().Msg("aborted")
+			return
+		}
+	}
 
 	//Fetches bundles from api.kyve.network
 	go loader.bundlesCollector()
@@ -30,12 +82,14 @@ func (loader *Loader) Start() {
 		go loader.dataRowWorker(fmt.Sprintf("CSV - %d", i))
 	}
 
-	loader.destination.StartProcess(loader.config.SourceSchema, loader.dataRowChannel, &loader.destinationWaitGroup)
+	loader.destination.StartProcess(&loader.destinationWaitGroup)
 
 	loader.dataRowWaitGroup.Wait()
 	close(loader.dataRowChannel)
 
 	loader.destinationWaitGroup.Wait()
+
+	loader.destination.Close()
 }
 
 func (loader *Loader) bundlesCollector() {
@@ -47,22 +101,31 @@ func (loader *Loader) bundlesCollector() {
 		panic(err)
 	}
 
-	fetcher.FetchBundles(func(bundles []collector.Bundle, err error) {
+	offset := loader.sourceConfig.FromBundleId
+	if loader.latestBundleId != nil {
+		offset = *loader.latestBundleId + 1
+		logger.Debug().Int64("id", offset).Msg("using latest_bundle_id + 1 as offset")
+	}
+
+	fetcher.FetchBundles(offset, func(bundles []collector.Bundle, err error) {
 		if err != nil {
-			logger.Error().Msg(fmt.Sprintf("Error fetching bundles: %v\nWaiting ... ", err))
+			logger.Error().Msg(fmt.Sprintf("error fetching bundles: %v", err))
+			logger.Info().Msg("waiting...")
 			time.Sleep(5 * time.Second)
 		} else {
-			fromBundleId, _ := strconv.ParseUint(bundles[0].Id, 10, 64)
-			toBundleId, _ := strconv.ParseUint(bundles[len(bundles)-1].Id, 10, 64)
-			loader.bundlesChannel <- BundlesBusItem{
-				bundles: bundles,
-				status: Status{
-					FromBundleId: int64(fromBundleId),
-					ToBundleId:   int64(toBundleId),
-					FromKey:      bundles[0].FromKey,
-					ToKey:        bundles[len(bundles)-1].ToKey,
-					DataSize:     0,
-				},
+			if len(bundles) > 0 {
+				fromBundleId, _ := strconv.ParseUint(bundles[0].Id, 10, 64)
+				toBundleId, _ := strconv.ParseUint(bundles[len(bundles)-1].Id, 10, 64)
+				loader.bundlesChannel <- BundlesBusItem{
+					bundles: bundles,
+					status: Status{
+						FromBundleId: int64(fromBundleId),
+						ToBundleId:   int64(toBundleId),
+						FromKey:      bundles[0].FromKey,
+						ToKey:        bundles[len(bundles)-1].ToKey,
+						DataSize:     0,
+					},
+				}
 			}
 		}
 	})
@@ -74,7 +137,7 @@ func (loader *Loader) dataRowWorker(name string) {
 	for {
 		item, ok := <-loader.bundlesChannel
 		if !ok {
-			logger.Info().Msg(fmt.Sprintf("(%s) Finished\n", name))
+			logger.Info().Msg(fmt.Sprintf("(%s) Finished", name))
 			return
 		}
 
@@ -82,7 +145,6 @@ func (loader *Loader) dataRowWorker(name string) {
 
 		items := make([]schema.DataRow, 0)
 		for _, k := range item.bundles {
-
 			utils.TryWithExponentialBackoff(func() error {
 				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k)
 				if err != nil {

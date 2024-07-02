@@ -69,59 +69,55 @@ type TendermintPreProcessed struct{}
 
 func (t TendermintPreProcessed) GetBigQuerySchema() bigquery.Schema {
 	return bigquery.Schema{
-		{Name: "_airbyte_raw_id", Type: bigquery.StringFieldType},
-		{Name: "_airbyte_extracted_at", Type: bigquery.TimestampFieldType},
-		{Name: "_airbyte_meta", Type: bigquery.JSONFieldType},
+		{Name: "_dlt_raw_id", Type: bigquery.StringFieldType},
+		{Name: "_dlt_extracted_at", Type: bigquery.TimestampFieldType},
 		{Name: "type", Type: bigquery.StringFieldType},
 		{Name: "value", Type: bigquery.JSONFieldType},
 		{Name: "height", Type: bigquery.IntegerFieldType},
-		{Name: "offset", Type: bigquery.StringFieldType},
 		{Name: "array_index", Type: bigquery.IntegerFieldType},
+		{Name: "bundle_id", Type: bigquery.IntegerFieldType},
 	}
 }
 
 func (t TendermintPreProcessed) GetBigQueryTimePartitioning() *bigquery.TimePartitioning {
 	return &bigquery.TimePartitioning{
-		Field: "_airbyte_extracted_at",
+		Field: "_dlt_extracted_at",
 		Type:  bigquery.DayPartitioningType,
 	}
 }
 
 func (t TendermintPreProcessed) GetBigQueryClustering() *bigquery.Clustering {
-	return &bigquery.Clustering{Fields: []string{"_airbyte_extracted_at"}}
+	return &bigquery.Clustering{Fields: []string{"_dlt_extracted_at"}}
 }
 
 func (t TendermintPreProcessed) GetCSVSchema() []string {
 	return []string{
-		"_airbyte_raw_id",
-		"_airbyte_extracted_at",
-		"_airbyte_meta",
+		"_dlt_raw_id",
+		"_dlt_extracted_at",
 		"type",
 		"value",
 		"height",
-		"offset",
 		"array_index",
+		"bundle_id",
 	}
 }
 
 func (t TendermintPreProcessed) GetPostgresCreateTableCommand(name string) string {
 	return fmt.Sprintf(`
 CREATE TABLE IF NOT EXISTS %s (
-    _airbyte_raw_id varchar NOT NULL,
-    _airbyte_extracted_at timestamp NOT NULL,
-    _airbyte_meta varchar NOT NULL,
+    _dlt_raw_id varchar NOT NULL,
+    _dlt_extracted_at timestamp NOT NULL,
     "type" varchar, 
     "value" varchar, 
     "height" integer NOT NULL, 
-    "offset" varchar NOT NULL, 
     "array_index" integer, 
+    "bundle_id" integer NOT NULL, 
     PRIMARY KEY (key)
     )
     `, name)
 }
 
 func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error) {
-
 	bundleBuffer, err := downloadBundle(bundle)
 	if err != nil {
 		return nil, err

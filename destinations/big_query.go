@@ -5,10 +5,13 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/iterator"
 	"io"
 	"sync"
 	"time"
@@ -44,24 +47,68 @@ type BigQuery struct {
 	schema schema.DataSource
 }
 
-func (b *BigQuery) StartProcess(schema schema.DataSource, dataRowChannel chan []schema.DataRow, waitGroup *sync.WaitGroup) {
+func (b *BigQuery) Close() {}
 
+func (b *BigQuery) GetLatestBundleId() *int64 {
+	ctx := context.Background()
+
+	client, err := bigquery.NewClient(ctx, b.config.ProjectId)
+	if err != nil {
+		logger.Error().Msg("failed to create BigQuery client")
+		panic(err)
+	}
+
+	stmt := fmt.Sprintf("SELECT MAX(`bundle_id`) FROM `%s.%s`", b.config.DatasetId, b.config.TableId)
+	query := client.Query(stmt)
+
+	it, err := query.Read(ctx)
+	if err != nil {
+		// Check if the error is a NotFound error, which indicates that the table does not exist
+		var apiErr *googleapi.Error
+		if errors.As(err, &apiErr) && apiErr.Code == 404 {
+			logger.Debug().Msg("BigQuery table does not exist yet")
+			return nil
+		}
+		panic(err)
+	}
+
+	var latestBundleId int64 = 0
+	for {
+		var row []bigquery.Value
+		err = it.Next(&row)
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("BigQuery iterator failed")
+			return nil
+		}
+		if row[0] != nil {
+			latestBundleId = row[0].(int64)
+		}
+	}
+	return &latestBundleId
+}
+
+func (b *BigQuery) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
 	b.schema = schema
 	b.dataRowChannel = dataRowChannel
 	b.bucketChannel = make(chan string, 4)
+}
 
+func (b *BigQuery) StartProcess(waitGroup *sync.WaitGroup) {
 	waitGroup.Add(1)
 
 	// Uploads CSV files to Google Cloud Storage
 	b.bucketWaitGroup.Add(b.config.BucketWorkerCount)
 	for i := 1; i <= b.config.BucketWorkerCount; i++ {
-		go b.bucketWorker(fmt.Sprintf("Bucket - %d", i))
+		go b.bucketWorker(fmt.Sprintf("bucket-%d", i))
 	}
 
 	// Import CSV files from Google Bucket to Table
 	b.bigQueryWaitGroup.Add(b.config.BigQueryWorkerCount)
 	for i := 1; i <= b.config.BigQueryWorkerCount; i++ {
-		go b.bigqueryWorker(fmt.Sprintf("BigQuery - %d", i))
+		go b.bigqueryWorker(fmt.Sprintf("big_query-%d", i))
 	}
 
 	go func() {
@@ -74,13 +121,13 @@ func (b *BigQuery) StartProcess(schema schema.DataSource, dataRowChannel chan []
 	}()
 }
 
-func (b *BigQuery) bucketWorker(name string) {
+func (b *BigQuery) bucketWorker(workerId string) {
 	defer b.bucketWaitGroup.Done()
 
 	for {
 		itemRows, ok := <-b.dataRowChannel
 		if !ok {
-			fmt.Printf("(%s) Finished\n", name)
+			logger.Info().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 
@@ -93,8 +140,7 @@ func (b *BigQuery) bucketWorker(name string) {
 		for _, c := range itemRows {
 			err := csvWriter.Write(c.ConvertToCSVLine())
 			if err != nil {
-				fmt.Println(err)
-				return
+				panic(err)
 			}
 		}
 		csvWriter.Flush()
@@ -104,32 +150,32 @@ func (b *BigQuery) bucketWorker(name string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return b.uploadCloudBucket("dbt_udf", fileName, csvBuffer)
 		}, func(err error) {
-			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
+			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
 		b.bucketChannel <- fileName
 
-		logger.Debug().Msg(fmt.Sprintf("(%s) Uploaded %s - channel(csvFiles): %d, channel(uuid): %d\n", name, fileName, len(b.dataRowChannel), len(b.bucketChannel)))
+		logger.Debug().Str("worker-id", workerId).Msg(fmt.Sprintf("(%s) Uploaded %s - channel(csvFiles): %d, channel(uuid): %d", fileName, len(b.dataRowChannel), len(b.bucketChannel)))
 	}
 }
 
-func (b *BigQuery) bigqueryWorker(name string) {
+func (b *BigQuery) bigqueryWorker(workerId string) {
 	defer b.bigQueryWaitGroup.Done()
 
 	for {
 		item, ok := <-b.bucketChannel
 		if !ok {
-			fmt.Printf("(%s) Finished\n", name)
+			logger.Info().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 
 		utils.TryWithExponentialBackoff(func() error {
 			return b.importCSVExplicitSchema("gs://dbt_udf/" + item)
 		}, func(err error) {
-			logger.Error().Str("err", err.Error()).Msg(fmt.Sprintf("(%s) error, retry in 5 seconds", name))
+			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
-		logger.Debug().Msg(fmt.Sprintf("(%s) Imported %s - channel(uuid): %d\n", name, item, len(b.bucketChannel)))
+		logger.Debug().Str("worker-id", workerId).Msg(fmt.Sprintf("Imported %s - channel(uuid): %d", item, len(b.bucketChannel)))
 	}
 }
 
@@ -168,7 +214,7 @@ func (b *BigQuery) uploadCloudBucket(bucket, object string, buf io.Reader) error
 		return fmt.Errorf("Writer.Close: %w", err)
 	}
 
-	fmt.Sprintf("bundles: %d, csv: %d", len(b.bucketChannel))
+	logger.Info().Msg(fmt.Sprintf("bundles: %d, csv: %d", len(b.bucketChannel)))
 
 	return nil
 }

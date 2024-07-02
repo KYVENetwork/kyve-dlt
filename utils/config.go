@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
+	"math"
 	"os"
 	"path/filepath"
 )
@@ -16,7 +17,13 @@ var (
 //go:embed config_template.yml
 var defaultConfig []byte
 
+func loadDefaultConfigValues() {
+	viper.SetDefault("source.from_bundle_id", 0)
+	viper.SetDefault("source.to_bundle_id", int64(math.MaxInt64))
+}
+
 func LoadConfig(configPath string) error {
+	loadDefaultConfigValues()
 	viper.SetConfigFile(configPath)
 
 	// Create default config if config doesn't exist

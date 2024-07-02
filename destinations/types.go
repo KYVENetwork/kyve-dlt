@@ -11,5 +11,8 @@ var (
 )
 
 type Destination interface {
-	StartProcess(schema schema.DataSource, csvChannel chan []schema.DataRow, waitGroup *sync.WaitGroup)
+	Close()
+	GetLatestBundleId() *int64
+	Initialize(schema schema.DataSource, csvChannel chan []schema.DataRow)
+	StartProcess(waitGroup *sync.WaitGroup)
 }

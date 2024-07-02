@@ -15,20 +15,32 @@ import (
 )
 
 func init() {
-	startCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	partialSyncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
-	rootCmd.AddCommand(startCmd)
+	partialSyncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "ID of first bundle to load (inclusive)")
+	if err := partialSyncCmd.MarkFlagRequired("from-bundle-id"); err != nil {
+		panic(fmt.Errorf("flag 'from-bundle-id' should be required: %w", err))
+	}
+
+	partialSyncCmd.Flags().Int64Var(&toBundleId, "to-bundle-id", 0, "ID of last bundle to load (inclusive)")
+	if err := partialSyncCmd.MarkFlagRequired("to-bundle-id"); err != nil {
+		panic(fmt.Errorf("flag 'to-bundle-id' should be required: %w", err))
+	}
+
+	partialSyncCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
+
+	rootCmd.AddCommand(partialSyncCmd)
 }
 
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start the sync",
+var partialSyncCmd = &cobra.Command{
+	Use:   "partial-sync",
+	Short: "Load a specific range of bundles",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := utils.LoadConfig(configPath); err != nil {
 			return
 		}
 
-		logger.Info().Msg("Starting Sync ...")
+		logger.Info().Int64("from_bundle_id", fromBundleId).Int64("to_bundle_id", toBundleId).Msg("Starting partial sync ...")
 		startTime := time.Now().Unix()
 
 		var dest destinations.Destination
@@ -55,14 +67,17 @@ var startCmd = &cobra.Command{
 
 		sourceConfig := collector.SourceConfig{
 			PoolId:       viper.GetInt64("source.pool_id"),
-			FromBundleId: viper.GetInt64("source.from_bundle_id"),
-			ToBundleId:   viper.GetInt64("source.to_bundle_id"),
+			FromBundleId: fromBundleId,
+			ToBundleId:   toBundleId,
 			StepSize:     viper.GetInt64("source.step_size"),
 			Endpoint:     viper.GetString("source.endpoint"),
+			PartialSync:  true,
 		}
 
 		var sourceSchema schema.DataSource
 		switch viper.GetString("source.schema") {
+		case "base":
+			sourceSchema = schema.Base{}
 		case "tendermint":
 			sourceSchema = schema.Tendermint{}
 		case "tendermint_preprocessed":
@@ -77,9 +92,9 @@ var startCmd = &cobra.Command{
 			SourceSchema:   sourceSchema,
 		}
 
-		loader.NewLoader(loaderConfig, sourceConfig, dest).Start()
+		loader.NewLoader(loaderConfig, sourceConfig, dest).Start(y)
 
-		logger.Info().Msg(fmt.Sprintf("Time: %d seconds\n", time.Now().Unix()-startTime))
+		logger.Info().Msg(fmt.Sprintf("Time: %d seconds", time.Now().Unix()-startTime))
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
 
