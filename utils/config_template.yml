@@ -9,7 +9,7 @@ source:
   pool_id: 0
   step_size: 1
   endpoint: "https://api.kyve.network"
-  # Column schema: base (default), tendermint_preprocessed
+  # Column schema: base (default), tendermint, tendermint_preprocessed
   schema: "base"
 
 # --- DESTINATION CONFIGURATION ---
