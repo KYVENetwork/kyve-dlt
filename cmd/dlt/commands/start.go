@@ -9,6 +9,7 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"math"
 	"time"
 
 	_ "net/http/pprof"
@@ -27,6 +28,22 @@ var startCmd = &cobra.Command{
 		if err := utils.LoadConfig(configPath); err != nil {
 			return
 		}
+
+		var fromBundleId int64
+		if viper.Get("source.from_bundle_id") == "" {
+			fromBundleId = 0
+		} else {
+			fromBundleId = viper.GetInt64("source.from_bundle_id")
+		}
+
+		var toBundleId int64
+		if viper.Get("source.to_bundle_id") == "" {
+			fromBundleId = int64(math.MaxInt64)
+		} else {
+			toBundleId = viper.GetInt64("source.to_bundle_id")
+		}
+
+		logger.Info().Int64("from_bundle_id", fromBundleId).Int64("to_bundle_id", toBundleId).Msg("set from and to bundle_id")
 
 		logger.Info().Msg("Starting Sync ...")
 		startTime := time.Now().Unix()
@@ -55,8 +72,8 @@ var startCmd = &cobra.Command{
 
 		sourceConfig := collector.SourceConfig{
 			PoolId:       viper.GetInt64("source.pool_id"),
-			FromBundleId: viper.GetInt64("source.from_bundle_id"),
-			ToBundleId:   viper.GetInt64("source.to_bundle_id"),
+			FromBundleId: fromBundleId,
+			ToBundleId:   toBundleId,
 			StepSize:     viper.GetInt64("source.step_size"),
 			Endpoint:     viper.GetString("source.endpoint"),
 		}
