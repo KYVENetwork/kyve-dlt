@@ -12,6 +12,8 @@ type SourceConfig struct {
 	StepSize int64
 
 	Endpoint string
+
+	PartialSync bool
 }
 
 type Source struct {

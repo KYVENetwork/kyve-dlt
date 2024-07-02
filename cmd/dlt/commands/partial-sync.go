@@ -9,29 +9,36 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"math"
 	"time"
 
 	_ "net/http/pprof"
 )
 
 func init() {
-	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	partialSyncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
-	syncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "start bundle-id of the initial sync process")
+	partialSyncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "ID of first bundle to load (inclusive)")
+	if err := partialSyncCmd.MarkFlagRequired("from-bundle-id"); err != nil {
+		panic(fmt.Errorf("flag 'from-bundle-id' should be required: %w", err))
+	}
 
-	rootCmd.AddCommand(syncCmd)
+	partialSyncCmd.Flags().Int64Var(&toBundleId, "to-bundle-id", 0, "ID of last bundle to load (inclusive)")
+	if err := partialSyncCmd.MarkFlagRequired("to-bundle-id"); err != nil {
+		panic(fmt.Errorf("flag 'to-bundle-id' should be required: %w", err))
+	}
+
+	rootCmd.AddCommand(partialSyncCmd)
 }
 
-var syncCmd = &cobra.Command{
-	Use:   "sync",
-	Short: "Start the incremental sync",
+var partialSyncCmd = &cobra.Command{
+	Use:   "partial-sync",
+	Short: "Load a specific range of bundles",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := utils.LoadConfig(configPath); err != nil {
 			return
 		}
 
-		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("Starting incremental sync ...")
+		logger.Info().Int64("from_bundle_id", fromBundleId).Int64("to_bundle_id", toBundleId).Msg("Starting partial sync ...")
 		startTime := time.Now().Unix()
 
 		var dest destinations.Destination
@@ -59,10 +66,10 @@ var syncCmd = &cobra.Command{
 		sourceConfig := collector.SourceConfig{
 			PoolId:       viper.GetInt64("source.pool_id"),
 			FromBundleId: fromBundleId,
-			ToBundleId:   math.MaxInt64,
+			ToBundleId:   toBundleId,
 			StepSize:     viper.GetInt64("source.step_size"),
 			Endpoint:     viper.GetString("source.endpoint"),
-			PartialSync:  false,
+			PartialSync:  true,
 		}
 
 		var sourceSchema schema.DataSource

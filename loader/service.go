@@ -22,17 +22,19 @@ func (loader *Loader) Start() {
 
 	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
 
-	loader.latestBundleId = loader.destination.GetLatestBundleId()
+	if !loader.sourceConfig.PartialSync {
+		loader.latestBundleId = loader.destination.GetLatestBundleId()
 
-	if loader.latestBundleId != nil {
-		logger.Info().Str("id", strconv.FormatInt(*loader.latestBundleId, 10)).Msg("set latestBundleId")
-	} else {
-		logger.Info().Msg("detected initial sync")
-	}
+		if loader.latestBundleId != nil {
+			logger.Info().Str("id", strconv.FormatInt(*loader.latestBundleId, 10)).Msg("set latestBundleId")
+		} else {
+			logger.Info().Msg("detected initial sync")
+		}
 
-	if loader.latestBundleId != nil && *loader.latestBundleId >= loader.sourceConfig.ToBundleId {
-		logger.Info().Int64("to_bundle_id", loader.sourceConfig.ToBundleId).Int64("latest_bundle_id", *loader.latestBundleId).Msg("latest bundle_id >= config to_bundle_id, exiting...")
-		return
+		if loader.latestBundleId != nil && *loader.latestBundleId >= loader.sourceConfig.ToBundleId {
+			logger.Info().Int64("to_bundle_id", loader.sourceConfig.ToBundleId).Int64("latest_bundle_id", *loader.latestBundleId).Msg("latest bundle_id >= config to_bundle_id, exiting...")
+			return
+		}
 	}
 
 	//Fetches bundles from api.kyve.network
