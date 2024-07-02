@@ -9,6 +9,7 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"strings"
 	"time"
 
 	_ "net/http/pprof"
@@ -26,6 +27,8 @@ func init() {
 	if err := partialSyncCmd.MarkFlagRequired("to-bundle-id"); err != nil {
 		panic(fmt.Errorf("flag 'to-bundle-id' should be required: %w", err))
 	}
+
+	partialSyncCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
 
 	rootCmd.AddCommand(partialSyncCmd)
 }
@@ -88,6 +91,22 @@ var partialSyncCmd = &cobra.Command{
 			ChannelSize:    viper.GetInt("loader.channel_size"),
 			CsvWorkerCount: viper.GetInt("loader.csv_worker_count"),
 			SourceSchema:   sourceSchema,
+		}
+
+		if !y {
+			answer := ""
+
+			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded into %v?\n[y/N]: ", fromBundleId, toBundleId, viper.GetString("destination.type"))
+
+			if _, err := fmt.Scan(&answer); err != nil {
+				logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+				return
+			}
+
+			if strings.ToLower(answer) != "y" {
+				logger.Info().Msg("aborted")
+				return
+			}
 		}
 
 		loader.NewLoader(loaderConfig, sourceConfig, dest).Start()

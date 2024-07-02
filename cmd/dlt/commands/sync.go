@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"math"
+	"strings"
 	"time"
 
 	_ "net/http/pprof"
@@ -19,6 +20,8 @@ func init() {
 	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
 	syncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "start bundle-id of the initial sync process")
+
+	syncCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
 
 	rootCmd.AddCommand(syncCmd)
 }
@@ -81,6 +84,22 @@ var syncCmd = &cobra.Command{
 			ChannelSize:    viper.GetInt("loader.channel_size"),
 			CsvWorkerCount: viper.GetInt("loader.csv_worker_count"),
 			SourceSchema:   sourceSchema,
+		}
+
+		if !y {
+			answer := ""
+
+			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded into %d [y/N]: ", fromBundleId, viper.GetString("destination.type"))
+
+			if _, err := fmt.Scan(&answer); err != nil {
+				logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+				return
+			}
+
+			if strings.ToLower(answer) != "y" {
+				logger.Error().Msg("aborted")
+				return
+			}
 		}
 
 		loader.NewLoader(loaderConfig, sourceConfig, dest).Start()

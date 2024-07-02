@@ -11,6 +11,7 @@ var (
 	fromBundleId int64
 	logger       = utils.DltLogger("cmd")
 	toBundleId   int64
+	y            bool
 )
 
 var rootCmd = &cobra.Command{
