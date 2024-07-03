@@ -16,11 +16,9 @@ func init() {
 		panic(fmt.Errorf("flag 'connection' should be required: %w", err))
 	}
 
-	runCmd.Flags().Int64Var(&interval, "interval", 2, "interval of the sync process (in hours)")
+	runCmd.Flags().Float64Var(&interval, "interval", 2, "interval of the sync process (in hours)")
 
 	runCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "start bundle-id of the initial sync process")
-
-	runCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
 
 	rootCmd.AddCommand(runCmd)
 }
@@ -38,14 +36,16 @@ var runCmd = &cobra.Command{
 
 		startTime := time.Now().Unix()
 
+		sleepDuration := time.Duration(interval * float64(time.Hour))
+
 		logger.Info().Int64("from_bundle_id", fromBundleId).Str("interval", fmt.Sprintf("%v hours", interval)).Msg("starting supervised incremental sync")
 
 		for {
-			loader.Start(y)
+			loader.Start(true)
 			logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
 
-			logger.Info().Msg(fmt.Sprintf("Waiting %d hours before starting next sync", interval))
-			time.Sleep(time.Duration(interval) * time.Hour)
+			logger.Info().Msg(fmt.Sprintf("Waiting %f hours before starting next sync", interval))
+			time.Sleep(sleepDuration)
 		}
 	},
 }

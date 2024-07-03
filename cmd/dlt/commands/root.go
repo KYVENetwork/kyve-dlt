@@ -10,7 +10,7 @@ var (
 	configPath   string
 	connection   string
 	fromBundleId int64
-	interval     int64
+	interval     float64
 	logger       = utils.DltLogger("cmd")
 	toBundleId   int64
 	y            bool
