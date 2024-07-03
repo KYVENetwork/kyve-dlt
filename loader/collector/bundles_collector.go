@@ -68,8 +68,8 @@ func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err er
 		return
 	}
 
-	if highestBundleId > s.toBundleId {
-		logger.Info().Msg("reached to_bundle_id")
+	if highestBundleId > s.toBundleId || paginationKey == "" {
+		logger.Info().Msg("reached last bundle")
 
 		var bundles []Bundle
 		for _, b := range initialBundles {
