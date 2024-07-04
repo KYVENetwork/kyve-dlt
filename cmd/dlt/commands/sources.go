@@ -1,14 +1,10 @@
 package commands
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"os"
-	"strconv"
-	"strings"
 )
 
 func init() {
@@ -41,15 +37,15 @@ var sourcesAddCmd = &cobra.Command{
 			Kind: yaml.MappingNode,
 			Content: []*yaml.Node{
 				{Kind: yaml.ScalarNode, Value: "name"},
-				{Kind: yaml.ScalarNode, Value: promptInput("\033[36mEnter Source name: \033[0m")},
+				{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Source name: \033[0m")},
 				{Kind: yaml.ScalarNode, Value: "pool_id"},
-				{Kind: yaml.ScalarNode, Value: promptInput("\033[36mEnter KYVE Pool ID: \033[0m")},
+				{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter KYVE Pool ID: \033[0m")},
 				{Kind: yaml.ScalarNode, Value: "step_size"},
-				{Kind: yaml.ScalarNode, Value: promptInputWithDefault("\033[36mEnter step size [default 20]: \033[0m", "20")},
+				{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter step size [default 20]: \033[0m", "20")},
 				{Kind: yaml.ScalarNode, Value: "endpoint"},
-				{Kind: yaml.ScalarNode, Value: promptInputWithDefault("\033[36mEnter endpoint [default https://api.kyve.network]: \033[0m", "https://api.kyve.network")},
+				{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter endpoint [default https://api.kyve.network]: \033[0m", "https://api.kyve.network")},
 				{Kind: yaml.ScalarNode, Value: "schema"},
-				{Kind: yaml.ScalarNode, Value: promptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "tendermint", "tendermint_preprocessed"})},
+				{Kind: yaml.ScalarNode, Value: utils.PromptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "tendermint", "tendermint_preprocessed"})},
 			},
 		}
 
@@ -158,39 +154,4 @@ var sourcesRemoveCmd = &cobra.Command{
 			logger.Info().Msg("No sources defined.")
 		}
 	},
-}
-
-func promptInput(prompt string) string {
-	fmt.Print(prompt)
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	return strings.TrimSpace(input)
-}
-
-func promptInputWithDefault(prompt string, defaultValue string) string {
-	fmt.Print(prompt)
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return defaultValue
-	}
-	return input
-}
-
-func promptSchemaDropdown(prompt string, options []string) string {
-	fmt.Println(prompt)
-	for i, option := range options {
-		fmt.Printf("%d: %s\n", i+1, option)
-	}
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Print("\033[36mEnter number of prefered schema: \033[0m")
-		input, _ := reader.ReadString('\n')
-		choice, err := strconv.Atoi(strings.TrimSpace(input))
-		if err == nil && choice > 0 && choice <= len(options) {
-			return options[choice-1]
-		}
-		fmt.Println("Invalid choice, please try again.")
-	}
 }
