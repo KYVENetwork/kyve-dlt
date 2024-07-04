@@ -1,14 +1,20 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+	"os"
+	"strconv"
+	"strings"
 )
 
 func init() {
 	sourcesCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
+	sourcesCmd.AddCommand(sourcesAddCmd)
 	sourcesCmd.AddCommand(sourcesListCmd)
 
 	rootCmd.AddCommand(sourcesCmd)
@@ -20,12 +26,70 @@ var sourcesCmd = &cobra.Command{
 	Aliases: []string{"s"},
 }
 
+var sourcesAddCmd = &cobra.Command{
+	Use:   "add",
+	Short: "Add a new source",
+	Run: func(cmd *cobra.Command, args []string) {
+		configNode, err := utils.LoadConfigWithComments(configPath)
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to load config")
+			return
+		}
+
+		newSource := yaml.Node{
+			Kind: yaml.MappingNode,
+			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Value: "name"},
+				{Kind: yaml.ScalarNode, Value: promptInput("\033[36mEnter Source name: \033[0m")},
+				{Kind: yaml.ScalarNode, Value: "pool_id"},
+				{Kind: yaml.ScalarNode, Value: promptInput("\033[36mEnter KYVE Pool ID: \033[0m")},
+				{Kind: yaml.ScalarNode, Value: "step_size"},
+				{Kind: yaml.ScalarNode, Value: promptInput("\033[36mEnter step size: \033[0m")},
+				{Kind: yaml.ScalarNode, Value: "endpoint"},
+				{Kind: yaml.ScalarNode, Value: promptInput("\033[36mEnter endpoint: \033[0m")},
+				{Kind: yaml.ScalarNode, Value: "schema"},
+				{Kind: yaml.ScalarNode, Value: promptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "tendermint", "tendermint_preprocessed"})},
+			},
+		}
+
+		// Find the sources node
+		var sourcesNode *yaml.Node
+		for i, node := range configNode.Content[0].Content {
+			if node.Value == "sources" {
+				sourcesNode = configNode.Content[0].Content[i+1]
+				break
+			}
+		}
+
+		// Append the new source
+		if sourcesNode != nil {
+			sourcesNode.Content = append(sourcesNode.Content, &newSource)
+		} else {
+			// Handle case where sources node doesn't exist
+			configNode.Content[0].Content = append(configNode.Content[0].Content, &yaml.Node{
+				Kind:    yaml.ScalarNode,
+				Value:   "sources",
+				Tag:     "!!seq",
+				Content: []*yaml.Node{&newSource},
+			})
+		}
+
+		if err := utils.SaveConfigWithComments(configPath, configNode); err != nil {
+			logger.Error().Str("err", err.Error()).Msg("error saving config")
+			return
+		}
+
+		logger.Info().Msg("Source added successfully!")
+	},
+}
+
 var sourcesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all specified sources",
 	Run: func(cmd *cobra.Command, args []string) {
 		config, err := utils.LoadConfig(configPath)
 		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to load config")
 			return
 		}
 
@@ -48,4 +112,28 @@ var sourcesListCmd = &cobra.Command{
 			fmt.Println("No sources defined.")
 		}
 	},
+}
+
+func promptSchemaDropdown(prompt string, options []string) string {
+	fmt.Println(prompt)
+	for i, option := range options {
+		fmt.Printf("%d: %s\n", i+1, option)
+	}
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("\033[36mEnter the number of your choice: \033[0m")
+		input, _ := reader.ReadString('\n')
+		choice, err := strconv.Atoi(strings.TrimSpace(input))
+		if err == nil && choice > 0 && choice <= len(options) {
+			return options[choice-1]
+		}
+		fmt.Println("Invalid choice, please try again.")
+	}
+}
+
+func promptInput(prompt string) string {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	return strings.TrimSpace(input)
 }

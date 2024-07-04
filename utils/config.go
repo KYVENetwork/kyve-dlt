@@ -102,6 +102,37 @@ func LoadConfig(configPath string) (*Config, error) {
 	return &config, nil
 }
 
+func LoadConfigWithComments(configPath string) (*yaml.Node, error) {
+	data, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var node yaml.Node
+	if err := yaml.Unmarshal(data, &node); err != nil {
+		return nil, err
+	}
+
+	return &node, nil
+}
+
+func SaveConfigWithComments(path string, node *yaml.Node) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := yaml.NewEncoder(file)
+	defer encoder.Close()
+
+	if err := encoder.Encode(node); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func setLogLevel(logLevel string) {
 	switch logLevel {
 	case "info":
