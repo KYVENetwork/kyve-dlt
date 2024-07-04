@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -16,6 +15,42 @@ var (
 
 //go:embed config_template.yml
 var defaultConfig []byte
+
+func ClearConfig(configPath string) error {
+	configNode, err := LoadConfigWithComments(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Helper function to clear a node if it exists, otherwise create an empty sequence node
+	clearOrInitializeNode := func(node *yaml.Node, key string) {
+		for i, content := range node.Content[0].Content {
+			if content.Value == key {
+				// Clear the node's content
+				node.Content[0].Content[i+1].Content = nil
+				return
+			}
+		}
+		// If the key doesn't exist, create it with an empty sequence node
+		node.Content[0].Content = append(node.Content[0].Content, &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: key,
+		}, &yaml.Node{
+			Kind: yaml.SequenceNode,
+		})
+	}
+
+	// Clear connections, sources, and destinations
+	clearOrInitializeNode(configNode, "connections")
+	clearOrInitializeNode(configNode, "sources")
+	clearOrInitializeNode(configNode, "destinations")
+
+	if err := SaveConfigWithComments(configPath, configNode); err != nil {
+		return fmt.Errorf("error saving config: %w", err)
+	}
+
+	return nil
+}
 
 func GetConnectionDetails(config *Config, connectionName string) (Source, Destination, error) {
 	var source Source
@@ -61,7 +96,30 @@ func GetConnectionDetails(config *Config, connectionName string) (Source, Destin
 }
 
 func LoadConfig(configPath string) (*Config, error) {
-	data, err := ioutil.ReadFile(configPath)
+	// Create default config if config doesn't exist
+	if _, err := os.Stat(configPath); err != nil {
+		logger.Info().Str("path", configPath).Msg("could not find config; creating with default values")
+
+		dirPath := filepath.Dir(configPath)
+		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
+			logger.Error().Str("directories", dirPath).Msg("failed to create directories")
+			panic(err)
+		}
+
+		f, err := os.Create(configPath)
+		if err != nil {
+			logger.Error().Str("config-path", configPath).Msg("failed to create config file")
+			panic(err)
+		}
+
+		_, err = f.Write(defaultConfig)
+		if err != nil {
+			logger.Error().Msg("failed to write default config")
+		}
+		return nil, fmt.Errorf("created default config, restart process")
+	}
+
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		logger.Error().Str("err", err.Error()).Msg("failed to read config")
 	}
@@ -71,39 +129,39 @@ func LoadConfig(configPath string) (*Config, error) {
 	if err != nil {
 		logger.Error().Str("err", err.Error()).Msg("failed to unmarshal config")
 	}
-
-	// Create default config if config doesn't exist
-	if _, err := os.Stat(configPath); err != nil {
-		logger.Info().Str("path", configPath).Msg("could not find config; creating with default values")
-
-		dirPath := filepath.Dir(configPath)
-		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
-			logger.Fatal().Str("directories", dirPath).Msg("failed to create directories")
-			panic(err)
-		}
-
-		f, err := os.Create(configPath)
-		if err != nil {
-			logger.Fatal().Str("config-path", configPath).Msg("failed to create config file")
-			panic(err)
-		}
-
-		_, err = f.Write(defaultConfig)
-		if err != nil {
-			logger.Fatal().Msg("failed to write default config")
-		}
-
-		logger.Info().Msg("created default config file, restart process")
-
-		return nil, fmt.Errorf("could not find config file")
-	}
 	setLogLevel(config.LogLevel)
 
 	return &config, nil
 }
 
+func InitConfig(configPath string) error {
+	// Create default config if config doesn't exist
+	if _, err := os.Stat(configPath); err != nil {
+		logger.Info().Str("path", configPath).Msg("creating default config")
+
+		dirPath := filepath.Dir(configPath)
+		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
+			logger.Error().Str("directories", dirPath).Msg("failed to create directories")
+			panic(err)
+		}
+
+		f, err := os.Create(configPath)
+		if err != nil {
+			logger.Error().Str("config-path", configPath).Msg("failed to create config file")
+			panic(err)
+		}
+
+		_, err = f.Write(defaultConfig)
+		if err != nil {
+			logger.Error().Msg("failed to write default config")
+		}
+		return nil
+	}
+	return fmt.Errorf("already initialized")
+}
+
 func LoadConfigWithComments(configPath string) (*yaml.Node, error) {
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}

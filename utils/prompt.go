@@ -8,6 +8,16 @@ import (
 	"strings"
 )
 
+func PromptConfirm(prompt string) bool {
+	answer := ""
+	fmt.Printf("\u001B[36m%s\u001B[0m", prompt)
+	if _, err := fmt.Scan(&answer); err != nil {
+		logger.Error().Str("err", err.Error()).Msg("failed to read user input")
+		return false
+	}
+	return strings.ToLower(answer) == "y"
+}
+
 func PromptDestinationDropdown(prompt string, options []string) string {
 	fmt.Println(prompt)
 	for i, option := range options {
