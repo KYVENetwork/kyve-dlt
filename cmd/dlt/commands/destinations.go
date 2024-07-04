@@ -185,7 +185,7 @@ var destinationsRemoveCmd = &cobra.Command{
 
 		destinationName := args[0]
 
-		// Find the sources node
+		// Find the destinations node
 		var destinationsNode *yaml.Node
 		for i, node := range configNode.Content[0].Content {
 			if node.Value == "destinations" {
@@ -194,7 +194,7 @@ var destinationsRemoveCmd = &cobra.Command{
 			}
 		}
 
-		// Find and remove the source by name
+		// Find and remove the destinations by name
 		if destinationsNode != nil {
 			for i := 0; i < len(destinationsNode.Content); i++ {
 				destination := destinationsNode.Content[i]
