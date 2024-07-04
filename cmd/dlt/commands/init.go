@@ -36,7 +36,7 @@ var initCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Println("\033[36m1) Create a Source\033[0m")
+		fmt.Println("1) Create a Source")
 		newSource := createSourceEntry()
 		addNodeToConfig(configNode, "sources", &newSource)
 		if err := utils.SaveConfigWithComments(configPath, configNode); err != nil {
@@ -44,7 +44,7 @@ var initCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Println("\n\033[36m2) Create a Destination\033[0m")
+		fmt.Println("\n2) Create a Destination")
 		configNode, err = utils.LoadConfigWithComments(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")
@@ -64,7 +64,21 @@ var initCmd = &cobra.Command{
 			logger.Error().Str("err", err.Error()).Msg("error saving config")
 			return
 		}
-		fmt.Println("\n\033[36mSuccessfully initialized and created first connection `connection_1`!\033[0m")
+		fmt.Println("\nSuccessfully initialized and created first connection \033[36m`connection_1`\033[0m!")
+
+		fmt.Println("\nTo start a sync, run one of the following commands: \n" +
+			"\033[32m" +
+			"`dlt sync --connection connection_1`\n" +
+			"`dlt partial-sync --connection connection_1 --from-bundle-id 10 --to-bundle-id 20`\n" +
+			"`dlt run --connection connection_1`\n" +
+			"\033[0m")
+
+		fmt.Println("To manage your config, run one of the following commands: \n" +
+			"\033[32m" +
+			"`dlt sources {add|remove|list}`\n" +
+			"`dlt destinations {add|remove|list}`\n" +
+			"`dlt connections {add|remove|list}`" +
+			"\033[0m")
 	},
 }
 
