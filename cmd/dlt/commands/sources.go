@@ -16,6 +16,7 @@ func init() {
 
 	sourcesCmd.AddCommand(sourcesAddCmd)
 	sourcesCmd.AddCommand(sourcesListCmd)
+	sourcesCmd.AddCommand(sourcesRemoveCmd)
 
 	rootCmd.AddCommand(sourcesCmd)
 }
@@ -110,6 +111,51 @@ var sourcesListCmd = &cobra.Command{
 			}
 		} else {
 			fmt.Println("No sources defined.")
+		}
+	},
+}
+
+var sourcesRemoveCmd = &cobra.Command{
+	Use:   "remove [source name]",
+	Short: "Remove a source by name",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		configNode, err := utils.LoadConfigWithComments(configPath)
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to load config")
+			return
+		}
+
+		sourceName := args[0]
+
+		// Find the sources node
+		var sourcesNode *yaml.Node
+		for i, node := range configNode.Content[0].Content {
+			if node.Value == "sources" {
+				sourcesNode = configNode.Content[0].Content[i+1]
+				break
+			}
+		}
+
+		// Find and remove the source by name
+		if sourcesNode != nil {
+			for i := 0; i < len(sourcesNode.Content); i++ {
+				source := sourcesNode.Content[i]
+				for j := 0; j < len(source.Content); j += 2 {
+					if source.Content[j].Value == "name" && source.Content[j+1].Value == sourceName {
+						sourcesNode.Content = append(sourcesNode.Content[:i], sourcesNode.Content[i+1:]...)
+						if err := utils.SaveConfigWithComments(configPath, configNode); err != nil {
+							logger.Error().Str("err", err.Error()).Msg("error saving config")
+							return
+						}
+						logger.Info().Msg("Source removed successfully!")
+						return
+					}
+				}
+			}
+			logger.Error().Msg("Source not found.")
+		} else {
+			logger.Info().Msg("No sources defined.")
 		}
 	},
 }
