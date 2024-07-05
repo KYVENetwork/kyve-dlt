@@ -15,6 +15,9 @@ var (
 )
 
 func (loader *Loader) Start(y bool) {
+	loader.mu.Lock()
+	defer loader.mu.Unlock()
+
 	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
@@ -162,7 +165,7 @@ func (loader *Loader) dataRowWorker(name string) {
 		loader.dataRowChannel <- items
 
 		logger.Info().
-			Str("fromKey", item.status.FromKey).
+			Int64("fromBundleId", item.status.FromBundleId).
 			Str("toKey", item.status.ToKey).
 			Int64("toBundleId", item.status.ToBundleId).
 			Int("bundles", len(item.bundles)).

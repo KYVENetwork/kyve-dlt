@@ -25,6 +25,8 @@ type Loader struct {
 	destination  destinations.Destination
 
 	latestBundleId *int64
+
+	mu sync.Mutex
 }
 
 type Config struct {
