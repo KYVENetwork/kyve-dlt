@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,7 +43,7 @@ func NewSource(config SourceConfig) (Source, error) {
 	}, nil
 }
 
-func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err error)) {
+func (s Source) FetchBundles(ctx context.Context, offset int64, handler func(bundles []Bundle, err error)) {
 	response, responseError := http.Get(
 		fmt.Sprintf(
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.offset=%d",
@@ -78,15 +79,21 @@ func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err er
 
 		var bundles []Bundle
 		for _, b := range initialBundles {
-			bundleId, err := strconv.ParseInt(b.Id, 10, 64)
-			if err != nil {
-				handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", err.Error()))
+			select {
+			// Graceful shutdown
+			case <-ctx.Done():
 				return
-			}
-			if bundleId <= s.toBundleId {
-				bundles = append(bundles, b)
-			} else {
-				break
+			default:
+				bundleId, err := strconv.ParseInt(b.Id, 10, 64)
+				if err != nil {
+					handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", err.Error()))
+					return
+				}
+				if bundleId <= s.toBundleId {
+					bundles = append(bundles, b)
+				} else {
+					break
+				}
 			}
 		}
 		handler(bundles, nil)
@@ -98,33 +105,39 @@ func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err er
 	// Iterate remaining bundles
 	currentBundleId := offset
 	for currentBundleId < s.toBundleId {
-		newBundles, nextKey, err := s.fetch(paginationKey)
-		if err != nil {
-			handler(nil, err)
-			continue
-		}
+		select {
+		// Graceful shutdown
+		case <-ctx.Done():
+			return
+		default:
+			newBundles, nextKey, err := s.fetch(paginationKey)
+			if err != nil {
+				handler(nil, err)
+				continue
+			}
 
-		bundles := make([]Bundle, 0)
-		for _, bundle := range newBundles {
-			id, idErr := strconv.ParseUint(bundle.Id, 10, 64)
-			if idErr != nil {
-				handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", idErr.Error()))
+			bundles := make([]Bundle, 0)
+			for _, bundle := range newBundles {
+				id, idErr := strconv.ParseUint(bundle.Id, 10, 64)
+				if idErr != nil {
+					handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", idErr.Error()))
+					return
+				}
+				if int64(id) <= s.toBundleId {
+					currentBundleId = int64(id)
+					bundles = append(bundles, bundle)
+				} else {
+					break
+				}
+			}
+			handler(bundles, nil)
+
+			if nextKey == "" {
+				logger.Info().Msg("reached last bundle")
 				return
 			}
-			if int64(id) <= s.toBundleId {
-				currentBundleId = int64(id)
-				bundles = append(bundles, bundle)
-			} else {
-				break
-			}
+			paginationKey = nextKey
 		}
-		handler(bundles, nil)
-
-		if nextKey == "" {
-			logger.Info().Msg("reached last bundle")
-			return
-		}
-		paginationKey = nextKey
 	}
 }
 
