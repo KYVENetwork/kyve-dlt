@@ -2,10 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"github.com/KYVENetwork/KYVE-DLT/destinations"
-	"github.com/KYVENetwork/KYVE-DLT/loader"
-	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
-	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"math"
@@ -33,74 +29,19 @@ var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Start the incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
-		config, err := utils.LoadConfig(configPath)
+		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("setting up incremental sync")
+		loader, err := setupLoader(configPath, false, fromBundleId, math.MaxInt64)
 		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to set up loader")
 			return
 		}
 
-		source, destination, err := utils.GetConnectionDetails(config, connection)
-		if err != nil {
-			logger.Error().Str("err", err.Error()).Msg("failed to read connection")
-			return
-		}
-
-		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("Starting incremental sync ...")
 		startTime := time.Now().Unix()
 
-		var dest destinations.Destination
-		switch destination.Type {
-		case "big_query":
-			bigQueryDest := destinations.NewBigQuery(destinations.BigQueryConfig{
-				ProjectId:           destination.ProjectID,
-				DatasetId:           destination.DatasetID,
-				TableId:             destination.TableID,
-				BigQueryWorkerCount: destination.WorkerCount,
-				BucketWorkerCount:   destination.BucketWorkerCount,
-			})
-			dest = &bigQueryDest
-		case "postgres":
-			postgresDest := destinations.NewPostgres(destinations.PostgresConfig{
-				ConnectionUrl:       destination.ConnectionURL,
-				TableName:           destination.TableName,
-				PostgresWorkerCount: destination.WorkerCount,
-			})
-			dest = &postgresDest
-		default:
-			panic(fmt.Errorf("destination type not supported: %v", destination.Type))
-		}
+		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("starting incremental sync")
 
-		sourceConfig := collector.SourceConfig{
-			PoolId:       int64(source.PoolID),
-			FromBundleId: fromBundleId,
-			ToBundleId:   math.MaxInt64,
-			StepSize:     int64(source.StepSize),
-			Endpoint:     source.Endpoint,
-			PartialSync:  false,
-		}
+		loader.Start(y)
 
-		var sourceSchema schema.DataSource
-		switch source.Schema {
-		case "base":
-			sourceSchema = schema.Base{}
-		case "tendermint":
-			sourceSchema = schema.Tendermint{}
-		case "tendermint_preprocessed":
-			sourceSchema = schema.TendermintPreProcessed{}
-		default:
-			panic(fmt.Errorf("source schema not supported: %v", source.Schema))
-		}
-
-		loaderConfig := loader.Config{
-			ChannelSize:    config.Loader.ChannelSize,
-			CsvWorkerCount: config.Loader.CSVWorkerCount,
-			SourceSchema:   sourceSchema,
-		}
-
-		loader.NewLoader(loaderConfig, sourceConfig, dest).Start(y)
-
-		logger.Info().Msg(fmt.Sprintf("Time: %d seconds", time.Now().Unix()-startTime))
-	},
-	PreRun: func(cmd *cobra.Command, args []string) {
-
+		logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
 	},
 }

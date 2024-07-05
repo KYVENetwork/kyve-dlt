@@ -62,14 +62,19 @@ func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err er
 		handler(nil, fmt.Errorf("initial bundle request failed: %s", responseError.Error()))
 	}
 
+	if len(initialBundles) == 0 {
+		handler(nil, fmt.Errorf("could not find any bundles yet; from-bundle-id too high or interval too short"))
+		return
+	}
+
 	highestBundleId, err := strconv.ParseInt(initialBundles[len(initialBundles)-1].Id, 10, 64)
 	if err != nil {
 		handler(nil, fmt.Errorf("malformed bundle response, invalid bundle-id: %s", err.Error()))
 		return
 	}
 
-	if highestBundleId > s.toBundleId {
-		logger.Info().Msg("reached to_bundle_id")
+	if highestBundleId > s.toBundleId || paginationKey == "" {
+		logger.Info().Msg("reached last bundle")
 
 		var bundles []Bundle
 		for _, b := range initialBundles {
@@ -116,7 +121,7 @@ func (s Source) FetchBundles(offset int64, handler func(bundles []Bundle, err er
 		handler(bundles, nil)
 
 		if nextKey == "" {
-			handler(nil, errors.New("invalid nextKey returned or end was reached early"))
+			logger.Info().Msg("reached last bundle")
 			return
 		}
 		paginationKey = nextKey
