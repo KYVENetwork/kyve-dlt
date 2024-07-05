@@ -15,6 +15,15 @@ This will build **dlt** in /build directory. Afterward, you may want to put it i
 cp build/dlt ~/go/bin/dlt
 ```
 
+## Initialization
+To set up the `dlt` config, run:
+```bash
+dlt init
+```
+
+This will either guide you to set up a first source and destination or create a config with default values.
+A connection consisting of a source and a destination is required to start any sync process.
+
 ## Usage
 Depending on what you want to achieve with `dlt` there are two commands available. A quick summary of what they do
 and when to use them can be found below:
@@ -23,14 +32,6 @@ and when to use them can be found below:
 |---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
 | **sync**                        | Starts an incremental sync based on a start bundle ID - first bundle of the pool by default. The sync runs until all bundles are loaded into the destination. When executing `dlt sync` again, it checks the latest loaded bundle ID in order to incrementally extend the existing dataset. | Generally recommended to sync a whole pool dataset into a destination. Can be used with a cronjob to keep the dataset in the destination updated. |
 | **partial-sync**                | Starts a partial sync from a start to an end bundle ID. Doesn't check the destination for already loaded bundles or duplicates.                                                                                                                                                             | Recommended to sync a specified range of bundles or to back-fill an existing dataset.                                                             |
-
-### Config
-The **dlt** config is used to define the source and the destination. With the first executed
-command, a default config is created under `path-to/kyve-dlt/.kyve-dlt/config.yml`, which
-includes some example values and explanations. After specifying the KYVE source and the 
-BigQuery or Postgres credentials, a sync can be started.
-
-For each sync process, a connection consisting of a source and a destination is required that can be defined in the config.
 
 ### `sync`
 **Usage:**
@@ -45,6 +46,14 @@ To start the incremental sync from a certain height, simple use the `--from-bund
 dlt partial-sync --connection connection_1 --from-bundle-id 0 --to-bundle-id 99
 ```
 The partial sync expects two further flags, `--from-bundle-id` and `--to-bundle-id`. In this example, the first 100 bundles of a defined KYVE source are loaded into the destination. `dlt` doesn't check the destination for existing bundles or duplicates.
+
+## Manage config
+With the following commands, sources, destinations, and connections can be added, removed or listed:
+```bash
+dlt sources      {add|remove|list}
+dlt destinations {add|remove|list}
+dlt connections  {add|remove|list}
+```
 
 ## Schemas
 - Base (supports all KYVE data pools)
