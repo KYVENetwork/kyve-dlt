@@ -88,10 +88,21 @@ func (loader *Loader) Start(y bool) {
 
 	// Handle shutdown
 	go func() {
-		<-loader.shutdownChannel
-		cancel()
-		logger.Info().Msg("Exiting...")
-		logger.Warn().Msg("This can take some time, please wait until dlt exited!")
+		sigCount := 0
+		for {
+			<-loader.shutdownChannel
+			sigCount++
+			if sigCount == 1 {
+				// First signal, attempt graceful shutdown
+				cancel()
+				logger.Info().Msg("Exiting...")
+				logger.Warn().Msg("This can take some time, please wait until dlt exited!")
+			} else if sigCount == 2 {
+				// Second signal, force exit
+				logger.Warn().Msg("Received second signal, forcing exit...")
+				os.Exit(1)
+			}
+		}
 	}()
 
 	//Fetches bundles from api.kyve.network
