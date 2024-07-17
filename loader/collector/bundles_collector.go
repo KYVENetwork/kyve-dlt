@@ -38,7 +38,7 @@ func NewSource(config SourceConfig) (Source, error) {
 		poolId:       config.PoolId,
 		fromBundleId: config.FromBundleId,
 		toBundleId:   config.ToBundleId,
-		stepSize:     config.StepSize,
+		batchSize:    config.BatchSize,
 		endpoint:     config.Endpoint,
 	}, nil
 }
@@ -49,7 +49,7 @@ func (s Source) FetchBundles(ctx context.Context, offset int64, handler func(bun
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.offset=%d",
 			s.endpoint,
 			s.poolId,
-			s.stepSize,
+			s.batchSize,
 			offset,
 		))
 	if responseError != nil {
@@ -147,7 +147,7 @@ func (s Source) fetch(paginationKey string) ([]Bundle, string, error) {
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.key=%s",
 			s.endpoint,
 			s.poolId,
-			s.stepSize,
+			s.batchSize,
 			strings.ReplaceAll(paginationKey, "+", "%2b"),
 		))
 	if responseError != nil {

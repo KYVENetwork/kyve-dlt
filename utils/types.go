@@ -9,11 +9,11 @@ type Config struct {
 }
 
 type Source struct {
-	Name     string `yaml:"name"`
-	PoolID   int    `yaml:"pool_id"`
-	StepSize int    `yaml:"step_size"`
-	Endpoint string `yaml:"endpoint"`
-	Schema   string `yaml:"schema"`
+	Name      string `yaml:"name"`
+	PoolID    int    `yaml:"pool_id"`
+	BatchSize int    `yaml:"batch_size"`
+	Endpoint  string `yaml:"endpoint"`
+	Schema    string `yaml:"schema"`
 }
 
 type Destination struct {

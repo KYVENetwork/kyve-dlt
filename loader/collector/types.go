@@ -9,7 +9,7 @@ type SourceConfig struct {
 	// inclusive
 	ToBundleId int64
 
-	StepSize int64
+	BatchSize int64
 
 	Endpoint string
 
@@ -23,7 +23,7 @@ type Source struct {
 	// inclusive
 	toBundleId int64
 
-	stepSize int64
+	batchSize int64
 
 	endpoint string
 }

@@ -46,7 +46,7 @@ func setupLoader(configPath string, partialSync bool, from, to int64) (*loader.L
 		PoolId:       int64(source.PoolID),
 		FromBundleId: from,
 		ToBundleId:   to,
-		StepSize:     int64(source.StepSize),
+		BatchSize:    int64(source.BatchSize),
 		Endpoint:     source.Endpoint,
 		PartialSync:  partialSync,
 	}
