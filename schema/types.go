@@ -6,7 +6,7 @@ import (
 )
 
 type DataSource interface {
-	DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error)
+	DownloadAndConvertBundle(bundle collector.Bundle, extractedAt string) ([]DataRow, error)
 	GetCSVSchema() []string
 	GetBigQuerySchema() bigquery.Schema
 	GetBigQueryTimePartitioning() *bigquery.TimePartitioning
