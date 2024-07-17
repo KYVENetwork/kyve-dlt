@@ -129,6 +129,7 @@ func (loader *Loader) bundlesCollector() {
 						FromKey:      bundles[0].FromKey,
 						ToKey:        bundles[len(bundles)-1].ToKey,
 						DataSize:     0,
+						ExtractedAt:  time.Now().Format(time.RFC3339),
 					},
 				}
 			}
@@ -151,7 +152,7 @@ func (loader *Loader) dataRowWorker(name string) {
 		items := make([]schema.DataRow, 0)
 		for _, k := range item.bundles {
 			utils.TryWithExponentialBackoff(func() error {
-				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k)
+				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k, item.status.ExtractedAt)
 				if err != nil {
 					return err
 				}
