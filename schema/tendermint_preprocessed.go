@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS %s (
     `, name)
 }
 
-func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error) {
+func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle, extractedAt string) ([]DataRow, error) {
 	bundleBuffer, err := downloadBundle(bundle)
 	if err != nil {
 		return nil, err
@@ -164,7 +164,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		for index, beginBlockItem := range kyveItem.Value.BlockResults.BeginBlockEvents {
 			columns = append(columns, TendermintPreProcessedRow{
 				_dlt_raw_id:       "",
-				_dlt_extracted_at: time.Now().Format(time.RFC3339),
+				_dlt_extracted_at: extractedAt,
 				item_type:         "begin_block_event",
 				value:             string(beginBlockItem),
 				height:            kyveItem.Key,
