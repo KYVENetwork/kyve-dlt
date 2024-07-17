@@ -6,7 +6,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -40,39 +39,21 @@ func (loader *Loader) Start(y bool) {
 			return
 		}
 
-		if !loader.sourceConfig.PartialSync {
-			if !y {
-				answer := ""
+		if !y {
+			from := loader.sourceConfig.FromBundleId
+			if loader.latestBundleId != nil {
+				from = *loader.latestBundleId + 1
+			}
 
-				from := loader.sourceConfig.FromBundleId
-				if loader.latestBundleId != nil {
-					from = *loader.latestBundleId + 1
-				}
-				fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded until all bundles are synced?\n\u001B[36m[y/N]\u001B[0m: ", from)
-				if _, err := fmt.Scan(&answer); err != nil {
-					logger.Error().Str("err", err.Error()).Msg("failed to read user input")
-					return
-				}
-
-				if strings.ToLower(answer) != "y" {
-					logger.Error().Msg("aborted")
-					return
-				}
+			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded until all bundles are synced?\n\u001B[36m[y/N]\u001B[0m: ", from)) {
+				logger.Error().Msg("aborted")
+				return
 			}
 		}
 	} else {
 		if !y {
-			answer := ""
-
-			fmt.Printf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId)
-
-			if _, err := fmt.Scan(&answer); err != nil {
-				logger.Error().Str("err", err.Error()).Msg("failed to read user input")
-				return
-			}
-
-			if strings.ToLower(answer) != "y" {
-				logger.Info().Msg("aborted")
+			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId)) {
+				logger.Error().Msg("aborted")
 				return
 			}
 		}
