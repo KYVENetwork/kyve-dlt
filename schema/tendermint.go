@@ -8,7 +8,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
 	"strconv"
-	"time"
 )
 
 type TendermintItem struct {
@@ -80,7 +79,7 @@ CREATE TABLE IF NOT EXISTS %s (
     `, name)
 }
 
-func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error) {
+func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle, extractedAt string) ([]DataRow, error) {
 	bundleBuffer, err := downloadBundle(bundle)
 	if err != nil {
 		return nil, err
@@ -109,7 +108,7 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow
 		}
 		columns = append(columns, TendermintRow{
 			_dlt_raw_id:       "",
-			_dlt_extracted_at: time.Now().Format(time.RFC3339),
+			_dlt_extracted_at: extractedAt,
 			value:             string(jsonValue),
 			height:            int64(height),
 			bundle_id:         int64(bundleId),

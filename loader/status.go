@@ -1,6 +1,8 @@
 package loader
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Status struct {
 	FromBundleId int64
@@ -8,6 +10,7 @@ type Status struct {
 	FromKey      string
 	ToKey        string
 	DataSize     int64
+	ExtractedAt  string
 }
 
 func (s Status) String() string {

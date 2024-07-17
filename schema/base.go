@@ -8,7 +8,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
 	"strconv"
-	"time"
 )
 
 type BaseItem struct {
@@ -80,7 +79,7 @@ CREATE TABLE IF NOT EXISTS %s (
     `, name)
 }
 
-func (t Base) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, error) {
+func (t Base) DownloadAndConvertBundle(bundle collector.Bundle, extractedAt string) ([]DataRow, error) {
 	bundleBuffer, err := downloadBundle(bundle)
 	if err != nil {
 		return nil, err
@@ -104,7 +103,7 @@ func (t Base) DownloadAndConvertBundle(bundle collector.Bundle) ([]DataRow, erro
 		}
 		columns = append(columns, BaseRow{
 			_dlt_raw_id:       "",
-			_dlt_extracted_at: time.Now().Format(time.RFC3339),
+			_dlt_extracted_at: extractedAt,
 			value:             string(jsonValue),
 			key:               kyveItem.Key,
 			bundle_id:         int64(bundleId),
