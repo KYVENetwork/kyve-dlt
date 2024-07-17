@@ -8,7 +8,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
 	"strconv"
-	"time"
 )
 
 type TendermintPreProcessedItem struct {
@@ -154,7 +153,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		bundleId, _ := strconv.ParseUint(bundle.Id, 10, 64)
 		columns = append(columns, TendermintPreProcessedRow{
 			_dlt_raw_id:       "",
-			_dlt_extracted_at: time.Now().Format(time.RFC3339),
+			_dlt_extracted_at: extractedAt,
 			item_type:         "block",
 			value:             string(prunedJson),
 			height:            kyveItem.Key,
@@ -175,7 +174,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		for index, txResult := range kyveItem.Value.BlockResults.TxsResults {
 			columns = append(columns, TendermintPreProcessedRow{
 				_dlt_raw_id:       "",
-				_dlt_extracted_at: time.Now().Format(time.RFC3339),
+				_dlt_extracted_at: extractedAt,
 				item_type:         "tx_result",
 				value:             string(txResult),
 				height:            kyveItem.Key,
@@ -186,7 +185,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		for index, endBlockEvents := range kyveItem.Value.BlockResults.EndBlockEvents {
 			columns = append(columns, TendermintPreProcessedRow{
 				_dlt_raw_id:       "",
-				_dlt_extracted_at: time.Now().Format(time.RFC3339),
+				_dlt_extracted_at: extractedAt,
 				item_type:         "end_block_event",
 				value:             string(endBlockEvents),
 				height:            kyveItem.Key,
