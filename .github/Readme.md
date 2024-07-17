@@ -64,9 +64,67 @@ dlt connections  {add|remove|list}
 ```
 
 ## Schemas
-- Base (supports all KYVE data pools)
-- Tendermint
-- TendermintPreprocessed (block is split into block_results, end_blocks, etc.)
+
+### `base`
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "_dlt_raw_id": { "type": "string" },
+    "_dlt_extracted_at": { "type": "string" },
+    "key": { "type": "string" },
+    "value": { "type": "string" },
+    "bundle_id": { "type": "integer" }
+  },
+  "required": ["_dlt_raw_id", "_dlt_extracted_at", "key", "value", "bundle_id"]
+}
+```
+
+This schema supports all KYVE datasets by default and consists of the core `key` and `value` structure that is required by the KYVE protocol.
+The `key` is the unique identifier of the data item in a data pool (e.g. height of a block, timestamp), whereas the `value` includes the actual data.
+
+### Tendermint
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "_dlt_raw_id": { "type": "string" },
+    "_dlt_extracted_at": { "type": "string" },
+    "height": { "type": "integer" },
+    "value": { "type": "string" },
+    "bundle_id": { "type": "integer" }
+  },
+  "required": ["_dlt_raw_id", "_dlt_extracted_at", "key", "value", "bundle_id"]
+}
+```
+This schema is supported for all Tendermint pools (runtime: `@kyvejs/tendermint`). Instead of using the raw key, it converts it to 
+a `height` as `integer`.
+
+### TendermintPreprocessed (block is split into block_results, end_blocks, etc.)
+This schema is supported for all Tendermint pools (runtime: `@kyvejs/tendermint`) and preprocesses the events in individual rows.
+It is recommended to use for datasets with big data items (e.g. Osmosis). This is the schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "_dlt_raw_id": { "type": "string" },
+    "_dlt_extracted_at": { "type": "string" },
+    "item_type": { "type": "string" },
+    "value": { "type": "string" },
+    "height": { "type": "string" },
+    "array_index": { "type": "integer" },
+    "bundle_id": { "type": "integer" }
+  },
+  "required": ["_dlt_raw_id", "_dlt_extracted_at", "item_type", "value", "height", "array_index", "bundle_id"]
+}
+```
+For this schema, the `height` itself is no unique identifier, because more than one rows are written for a single data item.
+The first row includes the block without events in the `value` field (`item_type = "block"`). The events with `item_type` 
+`begin_block_event`, `tx_result`, and `end_block_event` follow, including the event value in `value` and an `array_index`.
+This structure allows everyone to reconstruct the data completely.
 
 ## Supported Destinations
 - BigQuery
