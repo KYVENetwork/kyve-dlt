@@ -36,12 +36,12 @@ var connectionsAddCmd = &cobra.Command{
 		sourceName := utils.PromptInput("\033[36mEnter Source name: \033[0m")
 		destName := utils.PromptInput("\033[36mEnter Destination name: \033[0m")
 
-		if !sourceExists(configNode, sourceName) {
+		if !valueExists(configNode, sourceName, "sources") {
 			logger.Error().Str("source", sourceName).Msg("source does not exist")
 			return
 		}
 
-		if !destinationExists(configNode, destName) {
+		if !valueExists(configNode, destName, "destinations") {
 			logger.Error().Str("destination", destName).Msg("destination does not exist")
 			return
 		}
@@ -168,31 +168,14 @@ var connectionsRemoveCmd = &cobra.Command{
 	},
 }
 
-func sourceExists(configNode *yaml.Node, sourceName string) bool {
+func valueExists(configNode *yaml.Node, sourceName, key string) bool {
 	for i, node := range configNode.Content[0].Content {
-		if node.Value == "sources" {
+		if node.Value == key {
 			sourcesNode := configNode.Content[0].Content[i+1]
 			for j := 0; j < len(sourcesNode.Content); j++ {
 				source := sourcesNode.Content[j]
 				for k := 0; k < len(source.Content); k += 2 {
 					if source.Content[k].Value == "name" && source.Content[k+1].Value == sourceName {
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
-}
-
-func destinationExists(configNode *yaml.Node, destName string) bool {
-	for i, node := range configNode.Content[0].Content {
-		if node.Value == "destinations" {
-			destinationsNode := configNode.Content[0].Content[i+1]
-			for j := 0; j < len(destinationsNode.Content); j++ {
-				destination := destinationsNode.Content[j]
-				for k := 0; k < len(destination.Content); k += 2 {
-					if destination.Content[k].Value == "name" && destination.Content[k+1].Value == destName {
 						return true
 					}
 				}

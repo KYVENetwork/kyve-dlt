@@ -26,7 +26,7 @@ func PromptDestinationDropdown(prompt string, options []string) string {
 	}
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print("\033[36mEnter number of prefered destination: \033[0m")
+		fmt.Printf("\033[36mSelect destination type [1-%v]: \033[0m", len(options))
 		input, _ := reader.ReadString('\n')
 		choice, err := strconv.Atoi(strings.TrimSpace(input))
 		if err == nil && choice > 0 && choice <= len(options) {
@@ -62,6 +62,20 @@ func PromptInputWithDefault(prompt string, defaultValue string) string {
 	return input
 }
 
+func PromptPoolId(prompt string) string {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+		i, err := strconv.Atoi(input)
+		if err == nil && i >= 0 {
+			return input
+		}
+		fmt.Println("Invalid choice, please try again.")
+	}
+}
+
 func PromptSchemaDropdown(prompt string, options []string) string {
 	fmt.Println(prompt)
 	for i, option := range options {
@@ -74,6 +88,23 @@ func PromptSchemaDropdown(prompt string, options []string) string {
 		choice, err := strconv.Atoi(strings.TrimSpace(input))
 		if err == nil && choice > 0 && choice <= len(options) {
 			return options[choice-1]
+		}
+		fmt.Println("Invalid choice, please try again.")
+	}
+}
+
+func PromptStepSize(prompt string, defaultValue string) string {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input == "" {
+			return defaultValue
+		}
+		i, err := strconv.Atoi(input)
+		if err == nil && i > 0 {
+			return input
 		}
 		fmt.Println("Invalid choice, please try again.")
 	}

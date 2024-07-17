@@ -134,7 +134,7 @@ func CreateConnectionEntry(connectionName, sourceName, destName string) yaml.Nod
 }
 
 func CreateDestinationEntry() yaml.Node {
-	destinationType := PromptDestinationDropdown("\033[36mSelect destination type: \033[0m", []string{"big_query", "postgres"})
+	destinationType := PromptDestinationDropdown("\033[36mAvailable options: \033[0m", []string{"big_query", "postgres"})
 
 	switch destinationType {
 	case "big_query":
@@ -185,9 +185,9 @@ func CreateSourceEntry() yaml.Node {
 			{Kind: yaml.ScalarNode, Value: "name"},
 			{Kind: yaml.ScalarNode, Value: PromptInput("\033[36mEnter Source name: \033[0m")},
 			{Kind: yaml.ScalarNode, Value: "pool_id"},
-			{Kind: yaml.ScalarNode, Value: PromptInput("\033[36mEnter KYVE Pool ID: \033[0m")},
+			{Kind: yaml.ScalarNode, Value: PromptPoolId("\033[36mEnter KYVE Pool ID: \033[0m")},
 			{Kind: yaml.ScalarNode, Value: "step_size"},
-			{Kind: yaml.ScalarNode, Value: PromptInputWithDefault("\033[36mEnter step size [default 20]: \033[0m", "20")},
+			{Kind: yaml.ScalarNode, Value: PromptStepSize("\033[36mEnter step size [default 20]: \033[0m", "20")},
 			{Kind: yaml.ScalarNode, Value: "endpoint"},
 			{Kind: yaml.ScalarNode, Value: PromptInputWithDefault("\033[36mEnter endpoint [default https://api.kyve.network]: \033[0m", "https://api.kyve.network")},
 			{Kind: yaml.ScalarNode, Value: "schema"},
