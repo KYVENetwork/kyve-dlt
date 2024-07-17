@@ -51,6 +51,8 @@ var destinationsAddCmd = &cobra.Command{
 					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Dataset ID: \033[0m")},
 					{Kind: yaml.ScalarNode, Value: "table_id"},
 					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Table ID: \033[0m")},
+					{Kind: yaml.ScalarNode, Value: "bucket_name"},
+					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Bucket Name: \033[0m")},
 					{Kind: yaml.ScalarNode, Value: "worker_count"},
 					{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter Worker count (default 2): \033[0m", "2")},
 					{Kind: yaml.ScalarNode, Value: "bucket_worker_count"},

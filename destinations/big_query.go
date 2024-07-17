@@ -21,9 +21,10 @@ import (
 )
 
 type BigQueryConfig struct {
-	ProjectId string
-	DatasetId string
-	TableId   string
+	ProjectId  string
+	DatasetId  string
+	TableId    string
+	BucketName string
 
 	BucketWorkerCount   int
 	BigQueryWorkerCount int
@@ -145,10 +146,10 @@ func (b *BigQuery) bucketWorker(workerId string) {
 		}
 		csvWriter.Flush()
 
-		fileName := fmt.Sprintf("dlt/%s.csv.gz", uuid.New().String())
+		fileName := fmt.Sprintf("dlt/%s/%s.csv.gz", time.Now().Format("2006-01-02"), uuid.New().String())
 
 		utils.TryWithExponentialBackoff(func() error {
-			return b.uploadCloudBucket("dbt_udf", fileName, csvBuffer)
+			return b.uploadCloudBucket(b.config.BucketName, fileName, csvBuffer)
 		}, func(err error) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
@@ -170,7 +171,7 @@ func (b *BigQuery) bigqueryWorker(workerId string) {
 		}
 
 		utils.TryWithExponentialBackoff(func() error {
-			return b.importCSVExplicitSchema("gs://dbt_udf/" + item)
+			return b.importCSVExplicitSchema(fmt.Sprintf("gs://%s/%s", b.config.BucketName, item))
 		}, func(err error) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})

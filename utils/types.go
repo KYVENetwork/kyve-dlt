@@ -22,6 +22,7 @@ type Destination struct {
 	ProjectID         string `yaml:"project_id,omitempty"`
 	DatasetID         string `yaml:"dataset_id,omitempty"`
 	TableID           string `yaml:"table_id,omitempty"`
+	BucketName        string `yaml:"bucket_name,omitempty"`
 	BucketWorkerCount int    `yaml:"bucket_worker_count,omitempty"`
 	ConnectionURL     string `yaml:"connection_url,omitempty"`
 	TableName         string `yaml:"table_name,omitempty"`
@@ -37,4 +38,5 @@ type Connection struct {
 type Loader struct {
 	ChannelSize    int `yaml:"channel_size"`
 	CSVWorkerCount int `yaml:"csv_worker_count"`
+	MaxRamGB       int `yaml:"max_ram_gb"`
 }
