@@ -7,37 +7,37 @@ log_level: "info"
 sources:
   - name: osmosis
     pool_id: 1
-    step_size: 20
+    batch_size: 20
     endpoint: "https://api.kyve.network"
     # Column schema: base (default), tendermint, tendermint_preprocessed
     schema: "tendermint_preprocessed"
   - name: archway
     pool_id: 2
-    step_size: 20
+    batch_size: 20
     endpoint: "https://api.kyve.network"
     # Column schema: base (default), tendermint, tendermint_preprocessed
     schema: "tendermint"
   - name: axelar
     pool_id: 3
-    step_size: 20
+    batch_size: 20
     endpoint: "https://api.kyve.network"
     # Column schema: base (default), tendermint, tendermint_preprocessed
     schema: "tendermint"
   - name: cronos
     pool_id: 5
-    step_size: 20
+    batch_size: 20
     endpoint: "https://api.kyve.network"
     # Column schema: base (default), tendermint, tendermint_preprocessed
     schema: "tendermint"
   - name: noble
     pool_id: 7
-    step_size: 20
+    batch_size: 20
     endpoint: "https://api.kyve.network"
     # Column schema: base (default), tendermint, tendermint_preprocessed
     schema: "tendermint"
   - name: celestia
     pool_id: 9
-    step_size: 20
+    batch_size: 20
     endpoint: "https://api.kyve.network"
     # Column schema: base (default), tendermint, tendermint_preprocessed
     schema: "tendermint"
