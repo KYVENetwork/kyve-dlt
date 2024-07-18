@@ -40,8 +40,8 @@ var sourcesAddCmd = &cobra.Command{
 				{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Source name: \033[0m")},
 				{Kind: yaml.ScalarNode, Value: "pool_id"},
 				{Kind: yaml.ScalarNode, Value: utils.PromptPoolId("\033[36mEnter KYVE Pool ID: \033[0m")},
-				{Kind: yaml.ScalarNode, Value: "step_size"},
-				{Kind: yaml.ScalarNode, Value: utils.PromptStepSize("\033[36mEnter step size [default 20]: \033[0m", "20")},
+				{Kind: yaml.ScalarNode, Value: "batch_size"},
+				{Kind: yaml.ScalarNode, Value: utils.PromptBatchSize("\033[36mEnter batch size [default 20]: \033[0m", "20")},
 				{Kind: yaml.ScalarNode, Value: "endpoint"},
 				{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter endpoint [default https://api.kyve.network]: \033[0m", "https://api.kyve.network")},
 				{Kind: yaml.ScalarNode, Value: "schema"},
@@ -92,18 +92,18 @@ var sourcesListCmd = &cobra.Command{
 
 		if len(config.Sources) > 0 {
 			columnOffset := 2
-			maxNameLen, maxPoolIDLen, maxStepSizeLen, maxEndpointLen, maxSchemaLen := len("Name"), len("PoolID"), len("StepSize"), len("Endpoint"), len("Schema")
+			maxNameLen, maxPoolIDLen, maxBatchSize, maxEndpointLen, maxSchemaLen := len("Name"), len("PoolID"), len("BatchSize"), len("Endpoint"), len("Schema")
 			for _, source := range config.Sources {
 				maxNameLen = max(maxNameLen, len(source.Name)) + columnOffset
 				maxPoolIDLen = max(maxPoolIDLen, len(fmt.Sprint(source.PoolID))) + columnOffset
-				maxStepSizeLen = max(maxStepSizeLen, len(fmt.Sprint(source.StepSize))) + columnOffset
+				maxBatchSize = max(maxBatchSize, len(fmt.Sprint(source.BatchSize))) + columnOffset
 				maxEndpointLen = max(maxEndpointLen, len(source.Endpoint)) + columnOffset
 				maxSchemaLen = max(maxSchemaLen, len(source.Schema))
 			}
 
-			fmt.Printf("\033[36m%-*s %-*s %-*s %-*s %-*s\033[0m\n", maxNameLen, "Name", maxPoolIDLen, "PoolID", maxStepSizeLen, "StepSize", maxEndpointLen, "Endpoint", maxSchemaLen, "Schema")
+			fmt.Printf("\033[36m%-*s %-*s %-*s %-*s %-*s\033[0m\n", maxNameLen, "Name", maxPoolIDLen, "PoolID", maxBatchSize, "BatchSize", maxEndpointLen, "Endpoint", maxSchemaLen, "Schema")
 			for _, source := range config.Sources {
-				fmt.Printf("%-*s %-*d %-*d %-*s %-*s\n", maxNameLen, source.Name, maxPoolIDLen, source.PoolID, maxStepSizeLen, source.StepSize, maxEndpointLen, source.Endpoint, maxSchemaLen, source.Schema)
+				fmt.Printf("%-*s %-*d %-*d %-*s %-*s\n", maxNameLen, source.Name, maxPoolIDLen, source.PoolID, maxBatchSize, source.BatchSize, maxEndpointLen, source.Endpoint, maxSchemaLen, source.Schema)
 			}
 		} else {
 			fmt.Println("No sources defined.")

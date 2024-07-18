@@ -6,8 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	"math"
 	"time"
-
-	_ "net/http/pprof"
 )
 
 func init() {
@@ -18,19 +16,21 @@ func init() {
 		panic(fmt.Errorf("flag 'connection' should be required: %w", err))
 	}
 
+	syncCmd.Flags().Float64Var(&interval, "interval", 2, "interval of the sync process (in hours)")
+
 	syncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "start bundle-id of the initial sync process")
 
-	syncCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
+	syncCmd.Flags().BoolVarP(&force, "force", "f", false, "skips checks if data was already loaded in destination")
 
 	rootCmd.AddCommand(syncCmd)
 }
 
 var syncCmd = &cobra.Command{
 	Use:   "sync",
-	Short: "Start the incremental sync",
+	Short: "Run a supervised incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("setting up incremental sync")
-		loader, err := setupLoader(configPath, false, fromBundleId, math.MaxInt64)
+		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("setting up supervised incremental sync")
+		loader, err := setupLoader(configPath, false, fromBundleId, math.MaxInt64, force)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to set up loader")
 			return
@@ -38,10 +38,16 @@ var syncCmd = &cobra.Command{
 
 		startTime := time.Now().Unix()
 
-		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("starting incremental sync")
+		sleepDuration := time.Duration(interval * float64(time.Hour))
 
-		loader.Start(y)
+		logger.Info().Int64("from_bundle_id", fromBundleId).Str("interval", fmt.Sprintf("%v hours", interval)).Msg("starting supervised incremental sync")
 
-		logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
+		for {
+			loader.Start(true)
+			logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
+
+			logger.Info().Msg(fmt.Sprintf("Waiting %f hours before starting next sync", interval))
+			time.Sleep(sleepDuration)
+		}
 	},
 }

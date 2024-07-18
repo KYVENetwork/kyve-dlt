@@ -93,7 +93,7 @@ func PromptSchemaDropdown(prompt string, options []string) string {
 	}
 }
 
-func PromptStepSize(prompt string, defaultValue string) string {
+func PromptBatchSize(prompt string, defaultValue string) string {
 	fmt.Print(prompt)
 	reader := bufio.NewReader(os.Stdin)
 	for {

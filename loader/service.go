@@ -33,34 +33,37 @@ func (loader *Loader) Start(y bool) {
 
 	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
 
-	if !loader.sourceConfig.PartialSync {
-		loader.latestBundleId = loader.destination.GetLatestBundleId()
+	loader.latestBundleId = loader.destination.GetLatestBundleId()
 
-		if loader.latestBundleId != nil {
-			logger.Debug().Str("id", strconv.FormatInt(*loader.latestBundleId, 10)).Msg("set latestBundleId")
-		} else {
-			logger.Info().Msg("detected initial sync")
+	if loader.latestBundleId != nil {
+		logger.Warn().Int64("highest_bundle_id", *loader.latestBundleId).Msg("found loaded data in destination")
+		if !loader.sourceConfig.Force {
+			loader.sourceConfig.FromBundleId = *loader.latestBundleId + 1
+			logger.Info().Int64("id", loader.sourceConfig.FromBundleId).
+				Msg("set new from_bundle_id - this step can be skipped with --force")
 		}
+	} else {
+		logger.Debug().Msg("detected initial sync")
+	}
 
-		if loader.latestBundleId != nil && *loader.latestBundleId >= loader.sourceConfig.ToBundleId {
-			logger.Info().Int64("to_bundle_id", loader.sourceConfig.ToBundleId).Int64("latest_bundle_id", *loader.latestBundleId).Msg("latest bundle_id >= config to_bundle_id, exiting...")
+	// PartialSync is enabled when --to-bundle-id is set
+	if loader.sourceConfig.PartialSync && !loader.sourceConfig.Force {
+		if loader.sourceConfig.FromBundleId > loader.sourceConfig.ToBundleId {
+			logger.Error().Int64("from", loader.sourceConfig.FromBundleId).
+				Int64("to", loader.sourceConfig.ToBundleId).
+				Msg("from_bundle_id > to_bundle_id - this step can be skipped with --force")
 			return
 		}
+	}
 
-		if !y {
-			from := loader.sourceConfig.FromBundleId
-			if loader.latestBundleId != nil {
-				from = *loader.latestBundleId + 1
-			}
-
-			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded until all bundles are synced?\n\u001B[36m[y/N]\u001B[0m: ", from)) {
+	if !y {
+		if !loader.sourceConfig.PartialSync {
+			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d be loaded until all bundles are synced?\n\u001B[36m[y/N]\u001B[0m: ", loader.sourceConfig.FromBundleId)) {
 				logger.Error().Msg("aborted")
 				return
 			}
-		}
-	} else {
-		if !y {
-			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be partially loaded?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId)) {
+		} else {
+			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be loaded?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId)) {
 				logger.Error().Msg("aborted")
 				return
 			}
@@ -115,10 +118,7 @@ func (loader *Loader) bundlesCollector(ctx context.Context) {
 	}
 
 	offset := loader.sourceConfig.FromBundleId
-	if loader.latestBundleId != nil {
-		offset = *loader.latestBundleId + 1
-		logger.Debug().Int64("id", offset).Msg("using latest_bundle_id + 1 as offset")
-	}
+	logger.Debug().Int64("bundle_id", offset).Msg("setting offset")
 
 	fetcher.FetchBundles(ctx, offset, func(bundles []collector.Bundle, err error) {
 		if err != nil {
