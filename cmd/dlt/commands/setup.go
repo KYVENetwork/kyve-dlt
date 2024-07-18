@@ -20,6 +20,8 @@ func setupLoader(configPath string, setTo bool, from, to int64, force bool) (*lo
 		return nil, fmt.Errorf("failed to load config: %v", err)
 	}
 
+	utils.GLOBAL_MAX_RAM_GB = uint64(config.Loader.MaxRamGB)
+
 	source, destination, err := utils.GetConnectionDetails(config, connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read connection: %v", err)
@@ -32,6 +34,7 @@ func setupLoader(configPath string, setTo bool, from, to int64, force bool) (*lo
 			ProjectId:           destination.ProjectID,
 			DatasetId:           destination.DatasetID,
 			TableId:             destination.TableID,
+			BucketName:          destination.BucketName,
 			BigQueryWorkerCount: destination.WorkerCount,
 			BucketWorkerCount:   destination.BucketWorkerCount,
 		})

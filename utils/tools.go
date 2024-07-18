@@ -11,6 +11,8 @@ import (
 	_ "unsafe"
 )
 
+var GLOBAL_MAX_RAM_GB = uint64(0)
+
 func AwaitEnoughMemory(name string) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
@@ -22,7 +24,7 @@ func AwaitEnoughMemory(name string) {
 		Str("num-gc", fmt.Sprintf("%v", m.NumGC)).
 		Msg("SYSINFO")
 
-	for m.Alloc > 20*1024*1024*1024 {
+	for m.Alloc > GLOBAL_MAX_RAM_GB*1024*1024*1024 {
 		runtime.ReadMemStats(&m)
 
 		logger.Debug().Msg(

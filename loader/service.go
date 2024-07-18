@@ -143,7 +143,7 @@ func (loader *Loader) bundlesCollector(ctx context.Context) {
 						FromKey:      bundles[0].FromKey,
 						ToKey:        bundles[len(bundles)-1].ToKey,
 						DataSize:     0,
-						ExtractedAt:  time.Now().Format(time.RFC3339),
+						ExtractedAt:  time.Now().Format(time.RFC3339Nano),
 					},
 				}
 			}

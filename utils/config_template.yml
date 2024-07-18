@@ -51,6 +51,7 @@ destinations:
     project_id: ""
     dataset_id: ""
     table_id: ""
+    bucket_name: ""
     worker_count: 2
     bucket_worker_count: 2
   - name: postgres_example
@@ -71,3 +72,4 @@ connections:
 loader:
   channel_size: 8
   csv_worker_count: 4
+  max_ram_gb: 20
