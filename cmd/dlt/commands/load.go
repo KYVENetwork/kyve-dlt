@@ -1,10 +1,14 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	l "github.com/KYVENetwork/KYVE-DLT/loader"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	_ "net/http/pprof"
@@ -51,7 +55,33 @@ var loadCmd = &cobra.Command{
 
 		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("starting incremental sync")
 
-		loader.Start(y)
+		// Required for graceful shutdown
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		shutdownChannel := make(chan os.Signal, 1)
+		signal.Notify(shutdownChannel, syscall.SIGINT, syscall.SIGTERM)
+
+		// Handle shutdown
+		go func() {
+			sigCount := 0
+			for {
+				<-shutdownChannel
+				sigCount++
+				if sigCount == 1 {
+					// First signal, attempt graceful shutdown
+					cancel()
+					logger.Info().Msg("Exiting...")
+					logger.Warn().Msg("This can take some time, please wait until dlt exited!")
+				} else if sigCount == 2 {
+					// Second signal, force exit
+					logger.Warn().Msg("Received second signal, forcing exit...")
+					os.Exit(1)
+				}
+			}
+		}()
+
+		loader.Start(ctx, y)
 
 		logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
 	},

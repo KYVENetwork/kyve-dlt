@@ -6,10 +6,7 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
-	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
 	"time"
 )
 
@@ -17,19 +14,12 @@ var (
 	logger = utils.DltLogger("loader")
 )
 
-func (loader *Loader) Start(y bool) {
+func (loader *Loader) Start(ctx context.Context, y bool) {
 	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
 	loader.bundlesChannel = make(chan BundlesBusItem, loader.config.ChannelSize)
 	loader.dataRowChannel = make(chan []schema.DataRow, loader.config.ChannelSize)
-
-	// Required for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	loader.shutdownChannel = make(chan os.Signal, 1)
-	signal.Notify(loader.shutdownChannel, syscall.SIGINT, syscall.SIGTERM)
 
 	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
 
@@ -69,25 +59,6 @@ func (loader *Loader) Start(y bool) {
 			}
 		}
 	}
-
-	// Handle shutdown
-	go func() {
-		sigCount := 0
-		for {
-			<-loader.shutdownChannel
-			sigCount++
-			if sigCount == 1 {
-				// First signal, attempt graceful shutdown
-				cancel()
-				logger.Info().Msg("Exiting...")
-				logger.Warn().Msg("This can take some time, please wait until dlt exited!")
-			} else if sigCount == 2 {
-				// Second signal, force exit
-				logger.Warn().Msg("Received second signal, forcing exit...")
-				os.Exit(1)
-			}
-		}
-	}()
 
 	//Fetches bundles from api.kyve.network
 	go loader.bundlesCollector(ctx)

@@ -1,12 +1,16 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	l "github.com/KYVENetwork/KYVE-DLT/loader"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"math"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -60,9 +64,42 @@ var syncCmd = &cobra.Command{
 
 		sleepDuration := time.Duration(interval * float64(time.Hour))
 
+		// Required for graceful shutdown
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		shutdownChannel := make(chan os.Signal, 1)
+		signal.Notify(shutdownChannel, syscall.SIGINT, syscall.SIGTERM)
+
+		running := true
+		sigCount := 0
+
+		// Handle shutdown
+		go func() {
+			for {
+				<-shutdownChannel
+				if running {
+					sigCount++
+					if sigCount == 1 {
+						// First signal, attempt graceful shutdown
+						cancel()
+						logger.Info().Msg("Exiting...")
+						logger.Warn().Msg("This can take some time, please wait until dlt exited!")
+					} else if sigCount == 2 {
+						// Second signal, force exit
+						logger.Warn().Msg("Received second signal, forcing exit...")
+						os.Exit(1)
+					}
+				} else {
+					os.Exit(1)
+				}
+			}
+		}()
+
 		logger.Info().Int64("from_bundle_id", fromBundleId).Str("interval", fmt.Sprintf("%v hours", interval)).Msg("starting supervised incremental sync")
 
 		for {
+			running = true
 			for i := range connections {
 				c := strings.TrimSpace(connections[i])
 
@@ -75,12 +112,16 @@ var syncCmd = &cobra.Command{
 
 				logger.Info().Str("connection", c).Msg(fmt.Sprintf("Starting loading process"))
 
-				loader.Start(true)
+				loader.Start(ctx, true)
 
 				logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", c, time.Now().Unix()-startTime))
 			}
+			if sigCount > 0 {
+				os.Exit(1)
+			}
 
 			logger.Info().Msg(fmt.Sprintf("Waiting %v hours before starting next sync", interval))
+			running = false
 			time.Sleep(sleepDuration)
 		}
 	},
