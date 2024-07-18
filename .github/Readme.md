@@ -107,17 +107,17 @@ It is recommended to use for datasets with big data items (e.g. Osmosis). This i
   "properties": {
     "_dlt_raw_id": { "type": "string" },
     "_dlt_extracted_at": { "type": "string" },
-    "item_type": { "type": "string" },
+    "type": { "type": "string" },
     "value": { "type": "string" },
     "height": { "type": "string" },
     "array_index": { "type": "integer" },
     "bundle_id": { "type": "integer" }
   },
-  "required": ["_dlt_raw_id", "_dlt_extracted_at", "item_type", "value", "height", "array_index", "bundle_id"]
+  "required": ["_dlt_raw_id", "_dlt_extracted_at", "type", "value", "height", "array_index", "bundle_id"]
 }
 ```
 For this schema, the `height` itself is no unique identifier, because more than one rows are written for a single data item.
-The first row includes the block without events in the `value` field (`item_type = "block"`). The events with `item_type` 
+The first row includes the block without events in the `value` field (`type = "block"`). The events with `type` 
 `begin_block_event`, `tx_result`, and `end_block_event` follow, including the event value in `value` and an `array_index`.
 This structure allows everyone to reconstruct the data completely.
 
