@@ -63,7 +63,7 @@ func (loader *Loader) Start(y bool) {
 				return
 			}
 		} else {
-			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be loaded?\n[y/N]: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId)) {
+			if !utils.PromptConfirm(fmt.Sprintf("\u001B[36m[DLT]\u001B[0m Should data from bundle_id %d to %d be loaded?\n\u001B[36m[y/N]\u001B[0m: ", loader.sourceConfig.FromBundleId, loader.sourceConfig.ToBundleId)) {
 				logger.Error().Msg("aborted")
 				return
 			}
