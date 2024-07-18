@@ -28,32 +28,27 @@ A connection consisting of a source and a destination is required to start any s
 Depending on what you want to achieve with `dlt` there are two commands available. A quick summary of what they do
 and when to use them can be found below:
 
-|                  | Description                                                                                                                                                                                                                                                                                 | Recommendation                                                                                                                                |
-|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| **sync**         | Starts an incremental sync based on a start bundle ID - first bundle of the pool by default. The sync runs until all bundles are loaded into the destination. When executing `dlt sync` again, it checks the latest loaded bundle ID in order to incrementally extend the existing dataset. | Generally recommended to sync a whole pool dataset into a destination. Can be used with `run` to keep the dataset in the destination updated. |
-| **run**          | Runs a supervised incremental sync in a given hour interval (default: 2).                                                                                                                                                                                                                   | Recommended to keep a dataset updated with incrementally added data.                                                                          |
-| **partial-sync** | Starts a partial sync from a start to an end bundle ID. Doesn't check the destination for already loaded bundles or duplicates.                                                                                                                                                             | Recommended to sync a specified range of bundles or to back-fill an existing dataset.                                                         |
+|                  | Description                                                                                                                                    | Recommendation                                                       |
+|------------------|------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| **load**         | Loads data from a KYVE source into a destination.                                                                                              | Generally recommended to load a dataset into a destination.          |
+| **sync**         | Runs a supervised incremental loading process in a given hour interval (default: 2) to keep the data destination in sync with the data source. | Recommended to keep a dataset updated with incrementally added data. |
 
-### `sync`
+### `load`
 **Usage:**
 ```bash
-dlt sync --connection connection_1
+dlt load --connection connection_1
 ```
-To start the incremental sync from a certain height, simply use the `--from-bundle-id` flag. This won't affect the incremental sync, but only the initial start bundle ID of the dataset.
+To start the loading process from or to a certain bundle, simply use the `--from-bundle-id` or `--to-bundle-id` flags.
 
-### `run` 
+`dlt` always checks if a bundle was already loaded into a destination. By default, the `to-bundle-id` is set to the `latest found bundle ID + 1`.
+To force the loading of the specified range of bundle, simple use the `--force` flag.
+
+### `sync` 
 **Usage:**
 ```bash
-dlt run --connection connection_1 --interval 1
+dlt sync --connection connection_1 --interval 1
 ```
-To start the supervised incremental sync that is executed in an 1-hour interval, simply use the `--interval` flag that expects the hour value.
-
-### `partial-sync`
-**Usage:**
-```bash
-dlt partial-sync --connection connection_1 --from-bundle-id 0 --to-bundle-id 99
-```
-The partial sync expects two further flags, `--from-bundle-id` and `--to-bundle-id`. In this example, the first 100 bundles of a defined KYVE source are loaded into the destination. `dlt` doesn't check the destination for existing bundles or duplicates.
+To start the supervised sync that is executed in an 1-hour interval, simply use the `--interval` flag that expects the hour value.
 
 ## Manage config
 With the following commands, sources, destinations, and connections can be added, removed or listed:
