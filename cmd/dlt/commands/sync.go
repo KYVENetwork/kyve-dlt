@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	l "github.com/KYVENetwork/KYVE-DLT/loader"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"math"
@@ -11,7 +12,7 @@ import (
 func init() {
 	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
-	syncCmd.Flags().StringVar(&connection, "connection", "", "name of the connection to sync")
+	syncCmd.Flags().StringVarP(&connection, "connection", "c", "", "name of the connection to sync")
 	if err := syncCmd.MarkFlagRequired("connection"); err != nil {
 		panic(fmt.Errorf("flag 'connection' should be required: %w", err))
 	}
@@ -30,7 +31,7 @@ var syncCmd = &cobra.Command{
 	Short: "Run a supervised incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
 		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("setting up supervised incremental sync")
-		loader, err := setupLoader(configPath, false, fromBundleId, math.MaxInt64, force)
+		loader, err := l.SetupLoader(configPath, connection, false, fromBundleId, math.MaxInt64, force)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to set up loader")
 			return

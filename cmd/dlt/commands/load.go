@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	l "github.com/KYVENetwork/KYVE-DLT/loader"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"time"
@@ -16,7 +17,7 @@ var (
 func init() {
 	loadCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
-	loadCmd.Flags().StringVar(&connection, "connection", "", "name of the connection to sync")
+	loadCmd.Flags().StringVarP(&connection, "connection", "c", "", "name of the connection to sync")
 	if err := loadCmd.MarkFlagRequired("connection"); err != nil {
 		panic(fmt.Errorf("flag 'connection' should be required: %w", err))
 	}
@@ -40,7 +41,7 @@ var loadCmd = &cobra.Command{
 			setTo = true
 		}
 
-		loader, err := setupLoader(configPath, setTo, fromBundleId, toBundleId, force)
+		loader, err := l.SetupLoader(configPath, connection, setTo, fromBundleId, toBundleId, force)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to set up loader")
 			return
