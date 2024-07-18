@@ -6,16 +6,16 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"math"
+	"strings"
 	"time"
 )
 
 func init() {
 	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
-	syncCmd.Flags().StringVarP(&connection, "connection", "c", "", "name of the connection to sync")
-	if err := syncCmd.MarkFlagRequired("connection"); err != nil {
-		panic(fmt.Errorf("flag 'connection' should be required: %w", err))
-	}
+	syncCmd.Flags().StringVarP(&connection, "connections", "c", "", "name of the connections to sync (comma separated)")
+
+	syncCmd.Flags().BoolVarP(&all, "all", "a", false, "sync all specified connections")
 
 	syncCmd.Flags().Float64Var(&interval, "interval", 2, "interval of the sync process (in hours)")
 
@@ -30,24 +30,57 @@ var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Run a supervised incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Info().Int64("from_bundle_id", fromBundleId).Msg("setting up supervised incremental sync")
-		loader, err := l.SetupLoader(configPath, connection, false, fromBundleId, math.MaxInt64, force)
-		if err != nil {
-			logger.Error().Str("err", err.Error()).Msg("failed to set up loader")
+		logger.Debug().Int64("from_bundle_id", fromBundleId).Float64("interval", interval).Msg("setting up supervised sync")
+		if connection == "" && !all {
+			logger.Error().Msg("either --connections or --all is required")
 			return
 		}
 
-		startTime := time.Now().Unix()
+		config, err := utils.LoadConfig(configPath)
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to load config")
+			return
+		}
+
+		var connections []string
+		if all {
+			c, err := utils.GetAllConnectionNames(config)
+			if err != nil {
+				logger.Error().Str("err", err.Error()).Msg("failed to get all connections")
+				return
+			}
+			connections = *c
+		} else {
+			if connection == "" {
+				logger.Error().Msg("either --connections or --all is required")
+				return
+			}
+			connections = strings.Split(connection, ",")
+		}
 
 		sleepDuration := time.Duration(interval * float64(time.Hour))
 
 		logger.Info().Int64("from_bundle_id", fromBundleId).Str("interval", fmt.Sprintf("%v hours", interval)).Msg("starting supervised incremental sync")
 
 		for {
-			loader.Start(true)
-			logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
+			for i := range connections {
+				c := strings.TrimSpace(connections[i])
 
-			logger.Info().Msg(fmt.Sprintf("Waiting %f hours before starting next sync", interval))
+				loader, err := l.SetupLoader(configPath, c, false, fromBundleId, math.MaxInt64, force)
+				if err != nil {
+					logger.Error().Str("connection", c).Str("err", err.Error()).Msg("failed to set up loader")
+					return
+				}
+				startTime := time.Now().Unix()
+
+				logger.Info().Str("connection", c).Msg(fmt.Sprintf("Starting loading process"))
+
+				loader.Start(true)
+
+				logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", c, time.Now().Unix()-startTime))
+			}
+
+			logger.Info().Msg(fmt.Sprintf("Waiting %v hours before starting next sync", interval))
 			time.Sleep(sleepDuration)
 		}
 	},

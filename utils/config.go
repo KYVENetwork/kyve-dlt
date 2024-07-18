@@ -85,40 +85,6 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func ClearExampleDestinations(configPath, key string) error {
-	configNode, err := LoadConfigWithComments(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	// Helper function to clear a node if it exists, otherwise create an empty sequence node
-	clearOrInitializeNode := func(node *yaml.Node, key string) {
-		for i, content := range node.Content[0].Content {
-			if content.Value == key {
-				// Clear the node's content
-				node.Content[0].Content[i+1].Content = nil
-				return
-			}
-		}
-		// If the key doesn't exist, create it with an empty sequence node
-		node.Content[0].Content = append(node.Content[0].Content, &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: key,
-		}, &yaml.Node{
-			Kind: yaml.SequenceNode,
-		})
-	}
-
-	// Clear connections, sources, and destinations
-	clearOrInitializeNode(configNode, key)
-
-	if err := SaveConfigWithComments(configPath, configNode); err != nil {
-		return fmt.Errorf("error saving config: %w", err)
-	}
-
-	return nil
-}
-
 func CreateConnectionEntry(connectionName, sourceName, destName string) yaml.Node {
 	return yaml.Node{
 		Kind: yaml.MappingNode,
@@ -196,6 +162,17 @@ func CreateSourceEntry() yaml.Node {
 			{Kind: yaml.ScalarNode, Value: PromptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "tendermint", "tendermint_preprocessed"})},
 		},
 	}
+}
+
+func GetAllConnectionNames(config *Config) (*[]string, error) {
+	var connections []string
+	for _, connection := range config.Connections {
+		connections = append(connections, connection.Name)
+	}
+	if len(connections) == 0 {
+		return nil, fmt.Errorf("no connections defined")
+	}
+	return &connections, nil
 }
 
 func GetConnectionDetails(config *Config, connectionName string) (Source, Destination, error) {
