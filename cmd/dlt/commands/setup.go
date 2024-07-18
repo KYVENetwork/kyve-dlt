@@ -7,9 +7,14 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
+	"math"
 )
 
-func setupLoader(configPath string, partialSync bool, from, to int64) (*loader.Loader, error) {
+func setupLoader(configPath string, setTo bool, from, to int64, force bool) (*loader.Loader, error) {
+	if !setTo {
+		to = math.MaxInt64
+	}
+
 	config, err := utils.LoadConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %v", err)
@@ -48,7 +53,8 @@ func setupLoader(configPath string, partialSync bool, from, to int64) (*loader.L
 		ToBundleId:   to,
 		BatchSize:    int64(source.BatchSize),
 		Endpoint:     source.Endpoint,
-		PartialSync:  partialSync,
+		PartialSync:  setTo,
+		Force:        force,
 	}
 
 	var sourceSchema schema.DataSource

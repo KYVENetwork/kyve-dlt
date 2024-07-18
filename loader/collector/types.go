@@ -14,6 +14,8 @@ type SourceConfig struct {
 	Endpoint string
 
 	PartialSync bool
+
+	Force bool
 }
 
 type Source struct {
