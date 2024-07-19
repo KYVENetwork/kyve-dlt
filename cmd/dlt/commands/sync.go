@@ -34,7 +34,6 @@ var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Run a supervised incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Debug().Int64("from_bundle_id", fromBundleId).Float64("interval", interval).Msg("setting up supervised sync")
 		if connection == "" && !all {
 			logger.Error().Msg("either --connections or --all is required")
 			return
@@ -46,20 +45,30 @@ var syncCmd = &cobra.Command{
 			return
 		}
 
+		logger.Debug().Int64("from_bundle_id", fromBundleId).Float64("interval", interval).Msg("setting up supervised sync")
+
 		var connections []string
+		allConnections, err := utils.GetAllConnectionNames(config)
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to get all connections")
+			return
+		}
+
 		if all {
-			c, err := utils.GetAllConnectionNames(config)
-			if err != nil {
-				logger.Error().Str("err", err.Error()).Msg("failed to get all connections")
-				return
-			}
-			connections = *c
+			connections = *allConnections
 		} else {
 			if connection == "" {
 				logger.Error().Msg("either --connections or --all is required")
 				return
 			}
 			connections = strings.Split(connection, ",")
+
+			for _, c := range connections {
+				if !utils.Contains(*allConnections, c) {
+					logger.Error().Msg(fmt.Sprintf("connection %v not found", c))
+					return
+				}
+			}
 		}
 
 		sleepDuration := time.Duration(interval * float64(time.Hour))
@@ -101,6 +110,10 @@ var syncCmd = &cobra.Command{
 		for {
 			running = true
 			for i := range connections {
+				if sigCount > 0 {
+					os.Exit(1)
+				}
+
 				c := strings.TrimSpace(connections[i])
 
 				loader, err := l.SetupLoader(configPath, c, false, fromBundleId, math.MaxInt64, force)

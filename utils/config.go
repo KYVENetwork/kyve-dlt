@@ -60,7 +60,7 @@ func ClearConfig(configPath, section string, namesToRemove []string) error {
 	var filteredContent []*yaml.Node
 	for _, entryNode := range targetNode.Content {
 		name := GetNodeValue(*entryNode, "name")
-		if !contains(namesToRemove, name) {
+		if !Contains(namesToRemove, name) {
 			filteredContent = append(filteredContent, entryNode)
 		}
 	}
@@ -76,7 +76,7 @@ func ClearConfig(configPath, section string, namesToRemove []string) error {
 	return nil
 }
 
-func contains(slice []string, item string) bool {
+func Contains(slice []string, item string) bool {
 	for _, elem := range slice {
 		if elem == item {
 			return true
