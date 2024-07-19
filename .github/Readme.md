@@ -60,7 +60,7 @@ dlt connections  {add|remove|list}
 
 ## Schemas
 
-### `base`
+### Base
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -97,7 +97,7 @@ The `key` is the unique identifier of the data item in a data pool (e.g. height 
 This schema is supported for all Tendermint pools (runtime: `@kyvejs/tendermint`). Instead of using the raw key, it converts it to 
 a `height` as `integer`.
 
-### TendermintPreprocessed (block is split into block_results, end_blocks, etc.)
+### TendermintPreprocessed
 This schema is supported for all Tendermint pools (runtime: `@kyvejs/tendermint`) and preprocesses the events in individual rows.
 It is recommended to use for datasets with big data items (e.g. Osmosis). This is the schema:
 

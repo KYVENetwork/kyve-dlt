@@ -4,7 +4,6 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/destinations"
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
-	"os"
 	"sync"
 )
 
@@ -17,8 +16,6 @@ type BundlesBusItem struct {
 type Loader struct {
 	bundlesChannel chan BundlesBusItem
 	dataRowChannel chan []schema.DataRow
-
-	shutdownChannel chan os.Signal
 
 	dataRowWaitGroup     sync.WaitGroup
 	destinationWaitGroup sync.WaitGroup

@@ -1,16 +1,15 @@
-package commands
+package loader
 
 import (
 	"fmt"
 	"github.com/KYVENetwork/KYVE-DLT/destinations"
-	"github.com/KYVENetwork/KYVE-DLT/loader"
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"math"
 )
 
-func setupLoader(configPath string, setTo bool, from, to int64, force bool) (*loader.Loader, error) {
+func SetupLoader(configPath, connection string, setTo bool, from, to int64, force bool) (*Loader, error) {
 	if !setTo {
 		to = math.MaxInt64
 	}
@@ -72,11 +71,11 @@ func setupLoader(configPath string, setTo bool, from, to int64, force bool) (*lo
 		panic(fmt.Errorf("source schema not supported: %v", source.Schema))
 	}
 
-	loaderConfig := loader.Config{
+	loaderConfig := Config{
 		ChannelSize:    config.Loader.ChannelSize,
 		CsvWorkerCount: config.Loader.CSVWorkerCount,
 		SourceSchema:   sourceSchema,
 	}
 
-	return loader.NewLoader(loaderConfig, sourceConfig, dest), nil
+	return NewLoader(loaderConfig, sourceConfig, dest), nil
 }

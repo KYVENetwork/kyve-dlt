@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	all          bool
 	configPath   string
 	connection   string
 	force        bool
