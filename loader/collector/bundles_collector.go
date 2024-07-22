@@ -43,7 +43,7 @@ func NewSource(config SourceConfig) (Source, error) {
 	}, nil
 }
 
-func (s Source) FetchBundles(ctx context.Context, offset int64, handler func(bundles []Bundle, err error)) {
+func (s Source) FetchBundles(ctx context.Context, offset int64, connectionName string, handler func(bundles []Bundle, err error)) {
 	response, responseError := http.Get(
 		fmt.Sprintf(
 			"%s/kyve/v1/bundles/%d?pagination.limit=%d&pagination.offset=%d",
@@ -75,7 +75,7 @@ func (s Source) FetchBundles(ctx context.Context, offset int64, handler func(bun
 	}
 
 	if highestBundleId > s.toBundleId || paginationKey == "" {
-		logger.Info().Msg("reached last bundle")
+		logger.Info().Str("connection", connectionName).Msg("reached last bundle")
 
 		var bundles []Bundle
 		for _, b := range initialBundles {
