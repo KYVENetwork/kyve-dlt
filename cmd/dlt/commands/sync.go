@@ -5,25 +5,25 @@ import (
 	"fmt"
 	l "github.com/KYVENetwork/KYVE-DLT/loader"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/spf13/cobra"
 	"math"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
 
+var mu sync.Mutex
+
 func init() {
 	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
-	syncCmd.Flags().StringVarP(&connection, "connections", "c", "", "name of the connections to sync (comma separated)")
+	syncCmd.Flags().StringVarP(&connectionName, "connections", "c", "", "name of the connections to sync (comma separated)")
 
 	syncCmd.Flags().BoolVarP(&all, "all", "a", false, "sync all specified connections")
-
-	syncCmd.Flags().Float64Var(&interval, "interval", 2, "interval of the sync process (in hours)")
-
-	syncCmd.Flags().Int64Var(&fromBundleId, "from-bundle-id", 0, "start bundle-id of the initial sync process")
 
 	syncCmd.Flags().BoolVarP(&force, "force", "f", false, "skips checks if data was already loaded in destination")
 
@@ -34,7 +34,7 @@ var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Run a supervised incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
-		if connection == "" && !all {
+		if connectionName == "" && !all {
 			logger.Error().Msg("either --connections or --all is required")
 			return
 		}
@@ -47,7 +47,7 @@ var syncCmd = &cobra.Command{
 
 		logger.Debug().Int64("from_bundle_id", fromBundleId).Float64("interval", interval).Msg("setting up supervised sync")
 
-		var connections []string
+		var connections []utils.Connection
 		allConnections, err := utils.GetAllConnectionNames(config)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to get all connections")
@@ -57,21 +57,19 @@ var syncCmd = &cobra.Command{
 		if all {
 			connections = *allConnections
 		} else {
-			if connection == "" {
-				logger.Error().Msg("either --connections or --all is required")
+			connectionsSlice := strings.Split(connectionName, ",")
+		ConnectionSelect:
+			for _, c := range connectionsSlice {
+				for _, conn := range *allConnections {
+					if strings.TrimSpace(c) == conn.Name {
+						connections = append(connections, conn)
+						continue ConnectionSelect
+					}
+				}
+				logger.Error().Msg(fmt.Sprintf("connectionName %v not found", c))
 				return
 			}
-			connections = strings.Split(connection, ",")
-
-			for _, c := range connections {
-				if !utils.Contains(*allConnections, c) {
-					logger.Error().Msg(fmt.Sprintf("connection %v not found", c))
-					return
-				}
-			}
 		}
-
-		sleepDuration := time.Duration(interval * float64(time.Hour))
 
 		// Required for graceful shutdown
 		ctx, cancel := context.WithCancel(context.Background())
@@ -80,8 +78,56 @@ var syncCmd = &cobra.Command{
 		shutdownChannel := make(chan os.Signal, 1)
 		signal.Notify(shutdownChannel, syscall.SIGINT, syscall.SIGTERM)
 
-		running := true
+		running := false
 		sigCount := 0
+
+		cronScheduler, err := gocron.NewScheduler()
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to create cron scheduler")
+			return
+		}
+
+		for _, c := range connections {
+			loader, err := l.SetupLoader(configPath, c.Name, false, fromBundleId, math.MaxInt64, force)
+			if err != nil {
+				logger.Error().Str("connectionName", c.Name).Str("err", err.Error()).Msg("failed to set up loader")
+				return
+			}
+			startTime := time.Now().Unix()
+
+			logger.Info().Str("connectionName", c.Name).Str("schedule", c.Cron).Msg(fmt.Sprintf("adding connection task to cron scheduler"))
+
+			var wg sync.WaitGroup
+			_, err = cronScheduler.NewJob(
+				gocron.CronJob(
+					c.Cron, false,
+				),
+				gocron.NewTask(
+					func() {
+						logger.Info().Str("connection", loader.ConnectionName).Msg("starting loading process")
+						running = true
+						mu.Lock()
+						wg.Add(1)
+						go func() {
+							defer wg.Done()
+							loader.Start(ctx, true)
+							logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", loader.ConnectionName, time.Now().Unix()-startTime))
+						}()
+						wg.Wait()
+						mu.Unlock()
+						running = false
+						if sigCount >= 1 {
+							os.Exit(1)
+						}
+					},
+				),
+			)
+			if err != nil {
+				logger.Error().Str("connectionName", loader.ConnectionName).Str("err", err.Error()).Msg("failed to set up cronjob")
+				return
+			}
+		}
+		cronScheduler.Start()
 
 		// Handle shutdown
 		go func() {
@@ -105,37 +151,6 @@ var syncCmd = &cobra.Command{
 			}
 		}()
 
-		logger.Info().Int64("from_bundle_id", fromBundleId).Str("interval", fmt.Sprintf("%v hours", interval)).Msg("starting supervised incremental sync")
-
-		for {
-			running = true
-			for i := range connections {
-				if sigCount > 0 {
-					os.Exit(1)
-				}
-
-				c := strings.TrimSpace(connections[i])
-
-				loader, err := l.SetupLoader(configPath, c, false, fromBundleId, math.MaxInt64, force)
-				if err != nil {
-					logger.Error().Str("connection", c).Str("err", err.Error()).Msg("failed to set up loader")
-					return
-				}
-				startTime := time.Now().Unix()
-
-				logger.Info().Str("connection", c).Msg(fmt.Sprintf("Starting loading process"))
-
-				loader.Start(ctx, true)
-
-				logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", c, time.Now().Unix()-startTime))
-			}
-			if sigCount > 0 {
-				os.Exit(1)
-			}
-
-			logger.Info().Msg(fmt.Sprintf("Waiting %v hours before starting next sync", interval))
-			running = false
-			time.Sleep(sleepDuration)
-		}
+		select {}
 	},
 }
