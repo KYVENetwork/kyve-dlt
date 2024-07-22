@@ -64,7 +64,7 @@ func (s Source) FetchBundles(ctx context.Context, offset int64, connectionName s
 	}
 
 	if len(initialBundles) == 0 {
-		handler(nil, fmt.Errorf("could not find any bundles yet; from-bundle-id too high or interval too short"))
+		handler(nil, fmt.Errorf("could not find any bundles yet; from-bundle-id too high or cron interval too short"))
 		return
 	}
 

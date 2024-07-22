@@ -12,7 +12,6 @@ var (
 	connectionName string
 	force          bool
 	fromBundleId   int64
-	interval       float64
 	logger         = utils.DltLogger("cmd")
 	toBundleId     int64
 	y              bool

@@ -45,7 +45,7 @@ var syncCmd = &cobra.Command{
 			return
 		}
 
-		logger.Debug().Int64("from_bundle_id", fromBundleId).Float64("interval", interval).Msg("setting up supervised sync")
+		logger.Debug().Int64("from_bundle_id", fromBundleId).Msg("setting up supervised sync")
 
 		var connections []utils.Connection
 		allConnections, err := utils.GetAllConnectionNames(config)
