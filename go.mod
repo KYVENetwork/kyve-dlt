@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/bigquery v1.59.1
 	cloud.google.com/go/storage v1.40.0
 	github.com/google/uuid v1.6.0
-	github.com/lib/pq v1.10.9
+	github.com/jackc/pgx/v5 v5.6.0
 	github.com/rs/zerolog v1.32.0
 	github.com/spf13/cobra v1.8.0
 	google.golang.org/api v0.171.0
@@ -30,6 +30,8 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/klauspost/compress v1.17.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
@@ -61,5 +63,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240314234333-6e1732d8331c // indirect
 	google.golang.org/grpc v1.62.1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )

@@ -1,11 +1,12 @@
 package destinations
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,7 +29,7 @@ func NewPostgres(config PostgresConfig) Postgres {
 type Postgres struct {
 	config         PostgresConfig
 	dataRowChannel chan []schema.DataRow
-	db             *sql.DB
+	conn           *pgx.Conn
 
 	postgresWaitGroup sync.WaitGroup
 
@@ -36,7 +37,7 @@ type Postgres struct {
 }
 
 func (p *Postgres) Close() {
-	if err := p.db.Close(); err != nil {
+	if err := p.conn.Close(context.Background()); err != nil {
 		panic(err)
 	}
 }
@@ -48,7 +49,7 @@ func (p *Postgres) GetLatestBundleId() *int64 {
 	)
 
 	var latestBundleId *int64
-	err := p.db.QueryRow(stmt).Scan(&latestBundleId)
+	err := p.conn.QueryRow(context.Background(), stmt).Scan(&latestBundleId)
 	if err != nil {
 		panic(err)
 	}
@@ -60,15 +61,16 @@ func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []sc
 	p.schema = schema
 	p.dataRowChannel = dataRowChannel
 
-	db, err := sql.Open("postgres", p.config.ConnectionUrl)
+	conn, err := pgx.Connect(context.Background(), p.config.ConnectionUrl)
 	if err != nil {
-		panic(err)
+		logger.Error().Str("err", err.Error()).Msg("failed to connect to Postgres")
+		os.Exit(1)
 	}
 
-	p.db = db
+	p.conn = conn
 	logger.Info().Msg("Postgres connection established")
 
-	if _, tableErr := p.db.Exec(p.schema.GetPostgresCreateTableCommand(p.config.TableName)); tableErr != nil {
+	if _, tableErr := p.conn.Exec(context.Background(), p.schema.GetPostgresCreateTableCommand(p.config.TableName)); tableErr != nil {
 		panic(tableErr)
 	}
 }
@@ -83,7 +85,7 @@ func (p *Postgres) StartProcess(waitGroup *sync.WaitGroup) {
 	go func() {
 		p.postgresWaitGroup.Wait()
 		waitGroup.Done()
-		_ = p.db.Close()
+		_ = p.conn.Close(context.Background())
 	}()
 }
 
@@ -132,7 +134,7 @@ func (p *Postgres) bulkInsert(items []schema.DataRow) error {
 		"\""+strings.Join(columnNames, "\", \"")+"\"",
 		strings.Join(templateStrings, ", "),
 	)
-	_, err := p.db.Exec(stmt, valueArgs...)
+	_, err := p.conn.Exec(context.Background(), stmt, valueArgs...)
 
 	return err
 }
