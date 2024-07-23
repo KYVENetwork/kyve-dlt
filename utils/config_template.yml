@@ -41,6 +41,12 @@ sources:
     endpoint: "https://api.kyve.network"
     # Column schema: base (default), tendermint, tendermint_preprocessed
     schema: "tendermint"
+  - name: zetachain
+    pool_id: 10
+    batch_size: 20
+    endpoint: "https://api.kaon.kyve.network"
+    # Column schema: base (default), tendermint, tendermint_preprocessed
+    schema: "tendermint"
 
 # --- DESTINATION CONFIGURATION ---
 # Supported destinations types: big_query, postgres
