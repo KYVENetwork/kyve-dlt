@@ -139,6 +139,8 @@ func CreateDestinationEntry() yaml.Node {
 				{Kind: yaml.ScalarNode, Value: PromptInput("\033[36mEnter Table name: \033[0m")},
 				{Kind: yaml.ScalarNode, Value: "worker_count"},
 				{Kind: yaml.ScalarNode, Value: PromptInputWithDefault("\033[36mEnter Worker count (default 4): \033[0m", "4")},
+				{Kind: yaml.ScalarNode, Value: "row_insert_limit"},
+				{Kind: yaml.ScalarNode, Value: PromptInputWithDefault("\033[36mEnter Row Insert limit (default 500): \033[0m", "500")},
 			},
 		}
 	default:

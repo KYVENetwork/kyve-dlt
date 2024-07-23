@@ -43,6 +43,7 @@ func SetupLoader(configPath, connection string, setTo bool, from, to int64, forc
 			ConnectionUrl:       destination.ConnectionURL,
 			TableName:           destination.TableName,
 			PostgresWorkerCount: destination.WorkerCount,
+			RowInsertLimit:      destination.RowInsertLimit,
 		})
 		dest = &postgresDest
 	default:
