@@ -33,49 +33,8 @@ var destinationsAddCmd = &cobra.Command{
 			return
 		}
 
-		destinationType := utils.PromptDestinationDropdown("\033[36mSelect destination: \033[0m", []string{"big_query", "postgres"})
-
-		var newDestination yaml.Node
-		switch destinationType {
-		case "big_query":
-			newDestination = yaml.Node{
-				Kind: yaml.MappingNode,
-				Content: []*yaml.Node{
-					{Kind: yaml.ScalarNode, Value: "name"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Destination name: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "type"},
-					{Kind: yaml.ScalarNode, Value: "big_query"},
-					{Kind: yaml.ScalarNode, Value: "project_id"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Project ID: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "dataset_id"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Dataset ID: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "table_id"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Table ID: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "bucket_name"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Bucket Name: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "worker_count"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter Worker count (default 2): \033[0m", "2")},
-					{Kind: yaml.ScalarNode, Value: "bucket_worker_count"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter Bucket Worker count (default 2): \033[0m", "2")},
-				},
-			}
-		case "postgres":
-			newDestination = yaml.Node{
-				Kind: yaml.MappingNode,
-				Content: []*yaml.Node{
-					{Kind: yaml.ScalarNode, Value: "name"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Destination name: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "type"},
-					{Kind: yaml.ScalarNode, Value: "postgres"},
-					{Kind: yaml.ScalarNode, Value: "connection_url"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Connection URL: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "table_name"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mEnter Table name: \033[0m")},
-					{Kind: yaml.ScalarNode, Value: "worker_count"},
-					{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter Worker count (default 4): \033[0m", "4")},
-				},
-			}
-		}
+		// Create new destination with prompts
+		newDestination := utils.CreateDestinationEntry()
 
 		// Find the destinations node
 		var destinationsNode *yaml.Node

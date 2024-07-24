@@ -16,6 +16,7 @@ type PostgresConfig struct {
 	TableName     string
 
 	PostgresWorkerCount int
+	RowInsertLimit      int
 }
 
 func NewPostgres(config PostgresConfig) Postgres {
@@ -99,7 +100,7 @@ func (p *Postgres) postgresWorker(workerId string) {
 		_ = items
 
 		utils.TryWithExponentialBackoff(func() error {
-			return p.bulkInsert(items)
+			return p.bulkInsert(items, p.config.RowInsertLimit)
 		}, func(err error) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
 		})
@@ -108,13 +109,15 @@ func (p *Postgres) postgresWorker(workerId string) {
 	}
 }
 
-func (p *Postgres) bulkInsert(items []schema.DataRow) error {
+func (p *Postgres) bulkInsert(items []schema.DataRow, rowLimit int) error {
 	columnNames := p.schema.GetCSVSchema()
 
 	argsCounter := 1
 	templateStrings := make([]string, 0, len(items))
 	valueArgs := make([]interface{}, 0, len(items))
+	selectedRows := 0
 	for _, row := range items {
+		selectedRows++
 		s := make([]string, len(columnNames))
 		for i := range s {
 			s[i] = "$" + strconv.FormatInt(int64(argsCounter), 10)
@@ -125,14 +128,34 @@ func (p *Postgres) bulkInsert(items []schema.DataRow) error {
 		for _, field := range row.ConvertToCSVLine() {
 			valueArgs = append(valueArgs, field)
 		}
+
+		if selectedRows == rowLimit {
+			stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+				p.config.TableName,
+				"\""+strings.Join(columnNames, "\", \"")+"\"",
+				strings.Join(templateStrings, ", "),
+			)
+			_, err := p.db.Exec(stmt, valueArgs...)
+			if err != nil {
+				return err
+			}
+			argsCounter = 1
+			templateStrings = make([]string, 0, len(items))
+			valueArgs = make([]interface{}, 0, len(items))
+			selectedRows = 0
+		}
 	}
 
-	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
-		p.config.TableName,
-		"\""+strings.Join(columnNames, "\", \"")+"\"",
-		strings.Join(templateStrings, ", "),
-	)
-	_, err := p.db.Exec(stmt, valueArgs...)
-
-	return err
+	if selectedRows >= 1 {
+		stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+			p.config.TableName,
+			"\""+strings.Join(columnNames, "\", \"")+"\"",
+			strings.Join(templateStrings, ", "),
+		)
+		_, err := p.db.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
