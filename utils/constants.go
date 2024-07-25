@@ -1,5 +1,11 @@
 package utils
 
 const (
-	DefaultHomePath = ".kyve-dlt/config.yml"
+	SegmentKey = "cwVoYw4i6hMDgd7Zlnna0MTM13FGNgcM"
+)
+
+const (
+	LoadCompleted = "LOAD_COMPLETED"
+	LoadStarted   = "LOAD_STARTED"
+	SyncStarted   = "SYNC_STARTED"
 )

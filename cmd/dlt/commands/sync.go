@@ -27,6 +27,8 @@ func init() {
 
 	syncCmd.Flags().BoolVarP(&force, "force", "f", false, "skips checks if data was already loaded in destination")
 
+	syncCmd.Flags().BoolVar(&optOut, "opt-out", false, "disable the collection of anonymous usage data")
+
 	rootCmd.AddCommand(syncCmd)
 }
 
@@ -70,9 +72,9 @@ var syncCmd = &cobra.Command{
 				}
 			}
 		}
-
 		sleepDuration := time.Duration(interval * float64(time.Hour))
 
+		utils.TrackSyncStartedEvent(configPath, optOut, len(connections))
 		// Required for graceful shutdown
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

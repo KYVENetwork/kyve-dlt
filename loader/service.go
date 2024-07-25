@@ -14,7 +14,7 @@ var (
 	logger = utils.DltLogger("loader")
 )
 
-func (loader *Loader) Start(ctx context.Context, y bool) {
+func (loader *Loader) Start(ctx context.Context, y bool, configPath string, optOut bool) {
 	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
@@ -59,6 +59,7 @@ func (loader *Loader) Start(ctx context.Context, y bool) {
 			}
 		}
 	}
+	utils.TrackLoadStartedEvent(configPath, optOut, loader.sourceConfig.PoolId)
 
 	//Fetches bundles from api.kyve.network
 	go loader.bundlesCollector(ctx)
@@ -77,6 +78,8 @@ func (loader *Loader) Start(ctx context.Context, y bool) {
 	loader.destinationWaitGroup.Wait()
 
 	loader.destination.Close()
+
+	utils.TrackLoadCompletedEvent(configPath, optOut, loader.sourceConfig.PoolId)
 }
 
 func (loader *Loader) bundlesCollector(ctx context.Context) {

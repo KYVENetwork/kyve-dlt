@@ -14,6 +14,7 @@ var (
 	fromBundleId int64
 	interval     float64
 	logger       = utils.DltLogger("cmd")
+	optOut       bool
 	toBundleId   int64
 	y            bool
 )

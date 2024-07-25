@@ -33,6 +33,8 @@ func init() {
 
 	loadCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
 
+	loadCmd.Flags().BoolVar(&optOut, "opt-out", false, "disable the collection of anonymous usage data")
+
 	rootCmd.AddCommand(loadCmd)
 }
 
@@ -80,7 +82,7 @@ var loadCmd = &cobra.Command{
 			}
 		}()
 
-		loader.Start(ctx, y)
+		loader.Start(ctx, y, configPath, optOut)
 
 		logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
 	},
