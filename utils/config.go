@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -228,64 +229,97 @@ func GetNodeValue(node yaml.Node, key string) string {
 }
 
 func InitConfig(configPath string) error {
-	// Create default config if config doesn't exist
-	if _, err := os.Stat(configPath); err != nil {
-		logger.Info().Str("path", configPath).Msg("creating default config")
-
-		dirPath := filepath.Dir(configPath)
-		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
-			logger.Error().Str("directories", dirPath).Msg("failed to create directories")
-			panic(err)
-		}
-
-		f, err := os.Create(configPath)
+	if configPath == "" {
+		home, err := os.UserHomeDir()
 		if err != nil {
-			logger.Error().Str("config-path", configPath).Msg("failed to create config file")
-			panic(err)
+			return err
 		}
 
-		_, err = f.Write(defaultConfig)
-		if err != nil {
-			logger.Error().Msg("failed to write default config")
+		dltDir := filepath.Join(home, ".kyve-dlt")
+		if _, err = os.Stat(dltDir); os.IsNotExist(err) {
+			if err = os.Mkdir(dltDir, 0o755); err != nil {
+				logger.Error().Str("directories", dltDir).Msg("failed to create config directory")
+				return err
+			}
+		} else {
+			return fmt.Errorf("config already initialized")
 		}
-		return nil
+
+		configFile := filepath.Join(dltDir, "config.yml")
+		if _, err = os.Stat(configFile); os.IsNotExist(err) {
+			f, err := os.Create(configFile)
+			if err != nil {
+				logger.Error().Str("path", configFile).Msg("failed to create config file")
+				return err
+			}
+
+			_, err = f.Write(defaultConfig)
+			if err != nil {
+				logger.Error().Msg("failed to write default config")
+				return err
+			}
+		} else {
+			return fmt.Errorf("config already initialized")
+		}
+	} else {
+		if strings.HasSuffix(configPath, "config.yml") {
+			configPath = filepath.Dir(configPath)
+		}
+
+		configFile := filepath.Join(configPath, "config.yml")
+		if _, err := os.Stat(configFile); err != nil {
+			logger.Info().Str("path", configFile).Msg("creating default config")
+
+			dirPath := filepath.Dir(configFile)
+			if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
+				logger.Error().Str("directories", dirPath).Msg("failed to create config directories")
+				return err
+			}
+
+			f, err := os.Create(configFile)
+			if err != nil {
+				logger.Error().Str("path", configFile).Msg("failed to create config file")
+				return err
+			}
+
+			_, err = f.Write(defaultConfig)
+			if err != nil {
+				logger.Error().Msg("failed to write default config")
+				return err
+			}
+			return nil
+		} else {
+			return fmt.Errorf("config already initialized")
+		}
 	}
-	return fmt.Errorf("already initialized")
+	return nil
 }
 
 func LoadConfig(configPath string) (*Config, error) {
-	// Create default config if config doesn't exist
+	if configPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		configPath = filepath.Join(home, ".kyve-dlt", "config.yml")
+	}
+
 	if _, err := os.Stat(configPath); err != nil {
-		logger.Info().Str("path", configPath).Msg("could not find config; creating with default values")
-
-		dirPath := filepath.Dir(configPath)
-		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
-			logger.Error().Str("directories", dirPath).Msg("failed to create directories")
-			panic(err)
-		}
-
-		f, err := os.Create(configPath)
-		if err != nil {
-			logger.Error().Str("config-path", configPath).Msg("failed to create config file")
-			panic(err)
-		}
-
-		_, err = f.Write(defaultConfig)
-		if err != nil {
-			logger.Error().Msg("failed to write default config")
-		}
-		return nil, fmt.Errorf("created default config, restart process")
+		logger.Info().Str("path", configPath).Msg("could not find config")
+		return nil, err
 	}
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		logger.Error().Str("err", err.Error()).Msg("failed to read config")
+		return nil, err
 	}
 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		logger.Error().Str("err", err.Error()).Msg("failed to unmarshal config")
+		return nil, err
 	}
 	setLogLevel(config.LogLevel)
 

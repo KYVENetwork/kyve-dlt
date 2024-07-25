@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	initCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	initCmd.Flags().StringVar(&configPath, "config", "", "set custom config path")
 	rootCmd.AddCommand(initCmd)
 }
 

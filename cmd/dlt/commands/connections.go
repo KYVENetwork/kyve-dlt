@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	connectionsCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	connectionsCmd.Flags().StringVar(&configPath, "config", "", "set custom config path")
 
 	connectionsCmd.AddCommand(connectionsAddCmd)
 	connectionsCmd.AddCommand(connectionsListCmd)

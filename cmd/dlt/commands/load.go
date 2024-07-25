@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	l "github.com/KYVENetwork/KYVE-DLT/loader"
-	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
@@ -19,7 +18,7 @@ var (
 )
 
 func init() {
-	loadCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	loadCmd.Flags().StringVar(&configPath, "config", "", "set custom config path")
 
 	loadCmd.Flags().StringVarP(&connection, "connection", "c", "", "name of the connection to sync")
 	if err := loadCmd.MarkFlagRequired("connection"); err != nil {

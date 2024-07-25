@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	syncCmd.Flags().StringVar(&configPath, "config", "", "set custom config path")
 
 	syncCmd.Flags().StringVarP(&connection, "connections", "c", "", "name of the connections to sync (comma separated)")
 

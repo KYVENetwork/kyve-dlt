@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	destinationsCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	destinationsCmd.Flags().StringVar(&configPath, "config", "", "set custom config path")
 
 	destinationsCmd.AddCommand(destinationsAddCmd)
 	destinationsCmd.AddCommand(destinationsListCmd)
