@@ -87,6 +87,7 @@ var syncCmd = &cobra.Command{
 			return
 		}
 
+		// Set up loader and Cron job for each connection
 		for _, c := range connections {
 			loader, err := l.SetupLoader(configPath, c.Name, false, fromBundleId, math.MaxInt64, force)
 			if err != nil {
@@ -97,11 +98,14 @@ var syncCmd = &cobra.Command{
 
 			logger.Info().Str("connectionName", c.Name).Str("schedule", c.Cron).Msg(fmt.Sprintf("adding connection task to cron scheduler"))
 
+			// Cron scheduler setup
 			var wg sync.WaitGroup
 			_, err = cronScheduler.NewJob(
+				// Register a Cron job for connection with the config's crontab
 				gocron.CronJob(
 					c.Cron, false,
 				),
+				// Add the loading process as Cron task to be executed in the crontab schedule
 				gocron.NewTask(
 					func() {
 						logger.Info().Str("connection", loader.ConnectionName).Msg("starting loading process")
@@ -127,6 +131,7 @@ var syncCmd = &cobra.Command{
 				return
 			}
 		}
+		// This will start the Cron scheduler to execute the specified tasks as goroutines
 		cronScheduler.Start()
 
 		// Handle shutdown
