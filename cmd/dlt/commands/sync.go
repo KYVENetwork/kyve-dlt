@@ -88,6 +88,7 @@ var syncCmd = &cobra.Command{
 		var oneSyncAtATime sync.Mutex
 		// Set up loader and Cron job for each connection
 		for _, c := range connections {
+			// TODO: Improve loader handling to prevent future concurrency issues. Use channel structure instead.
 			loader, err := l.SetupLoader(configPath, c.Name, false, fromBundleId, math.MaxInt64, force)
 			if err != nil {
 				logger.Error().Str("connectionName", c.Name).Str("err", err.Error()).Msg("failed to set up loader")
@@ -107,9 +108,14 @@ var syncCmd = &cobra.Command{
 					func() {
 						running = true
 						startTime := time.Now().Unix()
+
+						// Lock to ensure that only one loading process is running at a time
 						oneSyncAtATime.Lock()
+
 						logger.Info().Str("connection", loader.ConnectionName).Msg("starting loading process")
+
 						loader.Start(ctx, true)
+
 						logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", loader.ConnectionName, time.Now().Unix()-startTime))
 						oneSyncAtATime.Unlock()
 						running = false
