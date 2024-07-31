@@ -164,7 +164,7 @@ func CreateSourceEntry() yaml.Node {
 	}
 }
 
-func GetAllConnectionNames(config *Config) (*[]Connection, error) {
+func GetAllConnections(config *Config) (*[]Connection, error) {
 	var connections []Connection
 	for _, connection := range config.Connections {
 		connections = append(connections, connection)

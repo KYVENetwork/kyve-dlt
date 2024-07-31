@@ -48,7 +48,7 @@ var syncCmd = &cobra.Command{
 		logger.Debug().Int64("from_bundle_id", fromBundleId).Msg("setting up supervised sync")
 
 		var connections []utils.Connection
-		allConnections, err := utils.GetAllConnectionNames(config)
+		allConnections, err := utils.GetAllConnections(config)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to get all connections")
 			return
