@@ -16,8 +16,6 @@ import (
 	"time"
 )
 
-var mu sync.Mutex
-
 func init() {
 	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
 
@@ -87,6 +85,7 @@ var syncCmd = &cobra.Command{
 			return
 		}
 
+		var oneSyncAtATime sync.Mutex
 		// Set up loader and Cron job for each connection
 		for _, c := range connections {
 			loader, err := l.SetupLoader(configPath, c.Name, false, fromBundleId, math.MaxInt64, force)
@@ -94,12 +93,10 @@ var syncCmd = &cobra.Command{
 				logger.Error().Str("connectionName", c.Name).Str("err", err.Error()).Msg("failed to set up loader")
 				return
 			}
-			startTime := time.Now().Unix()
 
 			logger.Info().Str("connectionName", c.Name).Str("schedule", c.Cron).Msg(fmt.Sprintf("adding connection task to cron scheduler"))
 
 			// Cron scheduler setup
-			var wg sync.WaitGroup
 			_, err = cronScheduler.NewJob(
 				// Register a Cron job for connection with the config's crontab
 				gocron.CronJob(
@@ -108,18 +105,16 @@ var syncCmd = &cobra.Command{
 				// Add the loading process as Cron task to be executed in the crontab schedule
 				gocron.NewTask(
 					func() {
-						logger.Info().Str("connection", loader.ConnectionName).Msg("starting loading process")
 						running = true
-						mu.Lock()
-						wg.Add(1)
-						go func() {
-							defer wg.Done()
-							loader.Start(ctx, true)
-							logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", loader.ConnectionName, time.Now().Unix()-startTime))
-						}()
-						wg.Wait()
-						mu.Unlock()
+						startTime := time.Now().Unix()
+						oneSyncAtATime.Lock()
+						logger.Info().Str("connection", loader.ConnectionName).Msg("starting loading process")
+						loader.Start(ctx, true)
+						logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", loader.ConnectionName, time.Now().Unix()-startTime))
+						oneSyncAtATime.Unlock()
 						running = false
+
+						// Exit if signal was received during loading process
 						if sigCount >= 1 {
 							os.Exit(1)
 						}
