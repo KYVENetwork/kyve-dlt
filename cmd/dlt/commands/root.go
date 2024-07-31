@@ -7,15 +7,14 @@ import (
 )
 
 var (
-	all          bool
-	configPath   string
-	connection   string
-	force        bool
-	fromBundleId int64
-	interval     float64
-	logger       = utils.DltLogger("cmd")
-	toBundleId   int64
-	y            bool
+	all            bool
+	configPath     string
+	connectionName string
+	force          bool
+	fromBundleId   int64
+	logger         = utils.DltLogger("cmd")
+	toBundleId     int64
+	y              bool
 )
 
 var rootCmd = &cobra.Command{
