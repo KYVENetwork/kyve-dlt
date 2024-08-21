@@ -103,7 +103,7 @@ var connectionsListCmd = &cobra.Command{
 
 		if len(config.Connections) > 0 {
 			columnOffset := 2
-			maxNameLen, maxSourceLen, maxDestinationLen, maxCronLen := len("Name"), len("Source"), len("Destination"), len("Destination")
+			maxNameLen, maxSourceLen, maxDestinationLen, maxCronLen := len("Name"), len("Source"), len("Destination"), len("Cron")
 			for _, connection := range config.Connections {
 				maxNameLen = max(maxNameLen, len(connection.Name)) + columnOffset
 				maxSourceLen = max(maxSourceLen, len(fmt.Sprint(connection.Source))) + columnOffset
