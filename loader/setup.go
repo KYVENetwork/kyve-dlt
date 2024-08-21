@@ -78,5 +78,5 @@ func SetupLoader(configPath, connection string, setTo bool, from, to int64, forc
 		SourceSchema:   sourceSchema,
 	}
 
-	return NewLoader(loaderConfig, sourceConfig, dest), nil
+	return NewLoader(loaderConfig, sourceConfig, dest, connection), nil
 }

@@ -68,6 +68,7 @@ connections:
   - name: connection_example
     source: osmosis
     destination: big_query_example
+    cron: "30 * * * *"
 
 # --- LOADER CONFIGURATION ---
 loader:

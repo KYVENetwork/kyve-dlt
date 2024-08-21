@@ -20,9 +20,10 @@ type Loader struct {
 	dataRowWaitGroup     sync.WaitGroup
 	destinationWaitGroup sync.WaitGroup
 
-	config       Config
-	sourceConfig collector.SourceConfig
-	destination  destinations.Destination
+	config         Config
+	sourceConfig   collector.SourceConfig
+	destination    destinations.Destination
+	ConnectionName string
 
 	latestBundleId *int64
 }
@@ -33,10 +34,11 @@ type Config struct {
 	SourceSchema   schema.DataSource
 }
 
-func NewLoader(loaderConfig Config, sourceConfig collector.SourceConfig, destination destinations.Destination) *Loader {
+func NewLoader(loaderConfig Config, sourceConfig collector.SourceConfig, destination destinations.Destination, connectionName string) *Loader {
 	return &Loader{
-		config:       loaderConfig,
-		sourceConfig: sourceConfig,
-		destination:  destination,
+		config:         loaderConfig,
+		sourceConfig:   sourceConfig,
+		destination:    destination,
+		ConnectionName: connectionName,
 	}
 }

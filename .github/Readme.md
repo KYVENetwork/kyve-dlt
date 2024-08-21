@@ -28,10 +28,10 @@ A connection consisting of a source and a destination is required to start any s
 Depending on what you want to achieve with `dlt` there are two commands available. A quick summary of what they do
 and when to use them can be found below:
 
-|                  | Description                                                                                                                                    | Recommendation                                                       |
-|------------------|------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
-| **load**         | Loads data from a KYVE source into a destination.                                                                                              | Generally recommended to load a dataset into a destination.          |
-| **sync**         | Runs a supervised incremental loading process in a given hour interval (default: 2) to keep the data destination in sync with the data source. | Recommended to keep a dataset updated with incrementally added data. |
+|                  | Description                                                                                                         | Recommendation                                                                       |
+|------------------|---------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| **load**         | Loads data from a KYVE source into a destination.                                                                   | Generally recommended to load a dataset into a destination.                          |
+| **sync**         | Runs a supervised incremental loading process in cronjob to keep the data destination in sync with the data source. | Recommended to keep an already loaded dataset updated with incrementally added data. |
 
 ### `load`
 **Usage:**
@@ -46,9 +46,11 @@ To force the loading of the specified range of bundle, simple use the `--force` 
 ### `sync` 
 **Usage:**
 ```bash
-dlt sync --connection connection_1 --interval 1
+dlt sync --connection connection_1
 ```
-To start the supervised sync that is executed in an 1-hour interval, simply use the `--interval` flag that expects the hour value.
+`sync` executes the loading process in a cronjob. Therefore, specify the `connection -> cron` field in the config.
+The following cron syntax is expected: `* * * * *`. The supervising process always checks if an underlying loading process 
+is currently running to prevent parallelized syncs. It waits until all processes are finished to proceed with the sync.
 
 ## Manage config
 With the following commands, sources, destinations, and connections can be added, removed or listed:

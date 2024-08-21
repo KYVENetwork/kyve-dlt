@@ -67,7 +67,7 @@ func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []sc
 	}
 
 	p.db = db
-	logger.Info().Msg("Postgres connection established")
+	logger.Info().Msg("postgres connection established")
 
 	if _, tableErr := p.db.Exec(p.schema.GetPostgresCreateTableCommand(p.config.TableName)); tableErr != nil {
 		panic(tableErr)
@@ -105,7 +105,7 @@ func (p *Postgres) postgresWorker(workerId string) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
 		})
 
-		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("Inserted %d rows. - channel(dataRow): %d", len(items), len(p.dataRowChannel)))
+		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("inserted %d rows. - channel(dataRow): %d", len(items), len(p.dataRowChannel)))
 	}
 }
 

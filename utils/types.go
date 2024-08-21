@@ -34,6 +34,7 @@ type Connection struct {
 	Name        string `yaml:"name"`
 	Source      string `yaml:"source"`
 	Destination string `yaml:"destination"`
+	Cron        string `yaml:"cron"`
 }
 
 type Loader struct {

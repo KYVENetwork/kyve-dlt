@@ -55,6 +55,8 @@ var connectionsAddCmd = &cobra.Command{
 				{Kind: yaml.ScalarNode, Value: sourceName},
 				{Kind: yaml.ScalarNode, Value: "destination"},
 				{Kind: yaml.ScalarNode, Value: destName},
+				{Kind: yaml.ScalarNode, Value: "cron"},
+				{Kind: yaml.ScalarNode, Value: utils.PromptInput("\033[36mSpecify cron schedule (e.g. '30 * * * *': \033[0m")},
 			},
 		}
 
@@ -101,16 +103,17 @@ var connectionsListCmd = &cobra.Command{
 
 		if len(config.Connections) > 0 {
 			columnOffset := 2
-			maxNameLen, maxSourceLen, maxDestinationLen := len("Name"), len("Source"), len("Destination")
+			maxNameLen, maxSourceLen, maxDestinationLen, maxCronLen := len("Name"), len("Source"), len("Destination"), len("Cron")
 			for _, connection := range config.Connections {
 				maxNameLen = max(maxNameLen, len(connection.Name)) + columnOffset
 				maxSourceLen = max(maxSourceLen, len(fmt.Sprint(connection.Source))) + columnOffset
 				maxDestinationLen = max(maxDestinationLen, len(fmt.Sprint(connection.Destination))) + columnOffset
+				maxCronLen = max(maxCronLen, len(fmt.Sprint(connection.Cron))) + columnOffset
 			}
 
-			fmt.Printf("\033[36m%-*s %-*s %-*s\033[0m\n", maxNameLen, "Name", maxSourceLen, "Source", maxDestinationLen, "Destination")
+			fmt.Printf("\033[36m%-*s %-*s %-*s %-*s\033[0m\n", maxNameLen, "Name", maxSourceLen, "Source", maxDestinationLen, "Destination", maxCronLen, "Cron")
 			for _, connection := range config.Connections {
-				fmt.Printf("%-*s %-*s %-*s\n", maxNameLen, connection.Name, maxSourceLen, connection.Source, maxDestinationLen, connection.Destination)
+				fmt.Printf("%-*s %-*s %-*s %-*s\n", maxNameLen, connection.Name, maxSourceLen, connection.Source, maxDestinationLen, connection.Destination, maxCronLen, connection.Cron)
 			}
 		} else {
 			fmt.Println("No connections defined.")
