@@ -81,7 +81,7 @@ var loadCmd = &cobra.Command{
 			}
 		}()
 
-		loader.Start(ctx, y)
+		loader.Start(ctx, y, false)
 
 		logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
 	},

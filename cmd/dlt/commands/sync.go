@@ -114,7 +114,7 @@ var syncCmd = &cobra.Command{
 
 						logger.Info().Str("connection", loader.ConnectionName).Msg("starting loading process")
 
-						loader.Start(ctx, true)
+						loader.Start(ctx, true, true)
 
 						logger.Info().Msg(fmt.Sprintf("Finished sync for %v! Took %d seconds", loader.ConnectionName, time.Now().Unix()-startTime))
 						oneSyncAtATime.Unlock()

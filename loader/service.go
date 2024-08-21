@@ -14,7 +14,7 @@ var (
 	logger = utils.DltLogger("loader")
 )
 
-func (loader *Loader) Start(ctx context.Context, y bool) {
+func (loader *Loader) Start(ctx context.Context, y bool, sync bool) {
 	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
@@ -28,8 +28,10 @@ func (loader *Loader) Start(ctx context.Context, y bool) {
 		logger.Warn().Str("connection", loader.ConnectionName).Int64("highest_bundle_id", *loader.latestBundleId).Msg("found loaded data in destination")
 		if !loader.sourceConfig.Force {
 			loader.sourceConfig.FromBundleId = *loader.latestBundleId + 1
-			logger.Info().Str("connection", loader.ConnectionName).Int64("id", loader.sourceConfig.FromBundleId).
-				Msg("set new from_bundle_id - this step can be skipped with --force")
+			if !sync {
+				logger.Info().Str("connection", loader.ConnectionName).Int64("id", loader.sourceConfig.FromBundleId).
+					Msg("set new from_bundle_id - this step can be skipped with --force")
+			}
 		}
 	} else {
 		logger.Debug().Str("connection", loader.ConnectionName).Msg("detected initial sync")
