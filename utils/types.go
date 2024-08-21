@@ -6,6 +6,12 @@ type Config struct {
 	Connections  []Connection  `yaml:"connections"`
 	Loader       Loader        `yaml:"loader"`
 	LogLevel     string        `yaml:"log_level"`
+	Prometheus   Prometheus    `yaml:"prometheus"`
+}
+
+type Prometheus struct {
+	Enabled bool   `yaml:"enabled"`
+	Port    string `yaml:"port"`
 }
 
 type Source struct {

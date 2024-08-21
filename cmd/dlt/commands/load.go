@@ -81,7 +81,20 @@ var loadCmd = &cobra.Command{
 			}
 		}()
 
+		// Register Prometheus
+		config, err := utils.LoadConfig(configPath)
+		if err != nil {
+			logger.Error().Str("err", err.Error()).Msg("failed to load config")
+			return
+		}
+		if config.Prometheus.Enabled {
+			utils.StartPrometheus(config.Prometheus.Port)
+		}
+
+		utils.PrometheusSyncStarted.WithLabelValues(loader.ConnectionName).Inc()
 		loader.Start(ctx, y, false)
+		utils.PrometheusSyncFinished.WithLabelValues(loader.ConnectionName).Inc()
+		utils.PrometheusLastSyncDuration.WithLabelValues(loader.ConnectionName).Set(float64(time.Now().Unix() - startTime))
 
 		logger.Info().Msg(fmt.Sprintf("Finished sync! Took %d seconds", time.Now().Unix()-startTime))
 	},

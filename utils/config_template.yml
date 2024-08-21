@@ -2,6 +2,10 @@
 # Supported: info (default), debug, none
 log_level: "info"
 
+prometheus:
+  enabled: true
+  port: 2112
+
 # --- SOURCE CONFIGURATION ---
 # A source is a KYVE pool including the validated data that will be loaded into the destination.
 sources:
