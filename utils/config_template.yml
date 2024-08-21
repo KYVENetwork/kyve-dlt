@@ -59,6 +59,7 @@ destinations:
     connection_url: ""
     table_name: ""
     worker_count: 4
+    row_insert_limit: 2000
 
 # --- CONNECTION CONFIGURATION ---
 # Connections are mappings of source and destination.

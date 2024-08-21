@@ -26,6 +26,7 @@ type Destination struct {
 	BucketWorkerCount int    `yaml:"bucket_worker_count,omitempty"`
 	ConnectionURL     string `yaml:"connection_url,omitempty"`
 	TableName         string `yaml:"table_name,omitempty"`
+	RowInsertLimit    int    `yaml:"row_insert_limit,omitempty"`
 	WorkerCount       int    `yaml:"worker_count"`
 }
 
