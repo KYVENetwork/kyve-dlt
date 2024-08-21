@@ -97,6 +97,7 @@ func (loader *Loader) bundlesCollector(ctx context.Context) {
 		if err != nil {
 			logger.Error().Msg(fmt.Sprintf("error fetching bundles: %v", err))
 			logger.Info().Msg("waiting...")
+			utils.PrometheusSyncStepFailedRetry.WithLabelValues(loader.ConnectionName).Inc()
 			time.Sleep(5 * time.Second)
 		} else {
 			if len(bundles) > 0 {
@@ -148,10 +149,14 @@ func (loader *Loader) dataRowWorker(name string) {
 				return nil
 			}, func(err error) {
 				logger.Error().Str("connection", loader.ConnectionName).Msg(fmt.Sprintf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error()))
+				utils.PrometheusSyncStepFailedRetry.WithLabelValues(loader.ConnectionName).Inc()
 			})
 		}
 
 		loader.dataRowChannel <- items
+
+		utils.PrometheusBundlesSynced.WithLabelValues(loader.ConnectionName).Add(float64(item.status.ToBundleId - item.status.FromBundleId + 1))
+		utils.PrometheusCurrentBundleHeight.WithLabelValues(loader.ConnectionName).Set(float64(item.status.ToBundleId))
 
 		logger.Info().
 			Str("connection", loader.ConnectionName).
