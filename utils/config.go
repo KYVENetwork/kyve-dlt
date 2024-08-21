@@ -164,10 +164,10 @@ func CreateSourceEntry() yaml.Node {
 	}
 }
 
-func GetAllConnectionNames(config *Config) (*[]string, error) {
-	var connections []string
+func GetAllConnections(config *Config) (*[]Connection, error) {
+	var connections []Connection
 	for _, connection := range config.Connections {
-		connections = append(connections, connection.Name)
+		connections = append(connections, connection)
 	}
 	if len(connections) == 0 {
 		return nil, fmt.Errorf("no connections defined")

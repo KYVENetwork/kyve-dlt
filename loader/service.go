@@ -14,7 +14,7 @@ var (
 	logger = utils.DltLogger("loader")
 )
 
-func (loader *Loader) Start(ctx context.Context, y bool) {
+func (loader *Loader) Start(ctx context.Context, y bool, sync bool) {
 	logger.Debug().Msg(fmt.Sprintf("BundleConfig: %#v", loader.sourceConfig))
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
@@ -24,22 +24,24 @@ func (loader *Loader) Start(ctx context.Context, y bool) {
 	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
 
 	loader.latestBundleId = loader.destination.GetLatestBundleId()
-
 	if loader.latestBundleId != nil {
-		logger.Warn().Int64("highest_bundle_id", *loader.latestBundleId).Msg("found loaded data in destination")
+		logger.Warn().Str("connection", loader.ConnectionName).Int64("highest_bundle_id", *loader.latestBundleId).Msg("found loaded data in destination")
 		if !loader.sourceConfig.Force {
 			loader.sourceConfig.FromBundleId = *loader.latestBundleId + 1
-			logger.Info().Int64("id", loader.sourceConfig.FromBundleId).
-				Msg("set new from_bundle_id - this step can be skipped with --force")
+			if !sync {
+				logger.Info().Str("connection", loader.ConnectionName).Int64("id", loader.sourceConfig.FromBundleId).
+					Msg("set new from_bundle_id - this step can be skipped with --force")
+			}
 		}
 	} else {
-		logger.Debug().Msg("detected initial sync")
+		logger.Debug().Str("connection", loader.ConnectionName).Msg("detected initial sync")
 	}
 
 	// PartialSync is enabled when --to-bundle-id is set
 	if loader.sourceConfig.PartialSync && !loader.sourceConfig.Force {
 		if loader.sourceConfig.FromBundleId > loader.sourceConfig.ToBundleId {
 			logger.Error().Int64("from", loader.sourceConfig.FromBundleId).
+				Str("connection", loader.ConnectionName).
 				Int64("to", loader.sourceConfig.ToBundleId).
 				Msg("from_bundle_id > to_bundle_id - this step can be skipped with --force")
 			return
@@ -89,9 +91,9 @@ func (loader *Loader) bundlesCollector(ctx context.Context) {
 	}
 
 	offset := loader.sourceConfig.FromBundleId
-	logger.Debug().Int64("bundle_id", offset).Msg("setting offset")
+	logger.Debug().Str("connection", loader.ConnectionName).Int64("bundle_id", offset).Msg("setting offset")
 
-	fetcher.FetchBundles(ctx, offset, func(bundles []collector.Bundle, err error) {
+	fetcher.FetchBundles(ctx, offset, loader.ConnectionName, func(bundles []collector.Bundle, err error) {
 		if err != nil {
 			logger.Error().Msg(fmt.Sprintf("error fetching bundles: %v", err))
 			logger.Info().Msg("waiting...")
@@ -102,6 +104,7 @@ func (loader *Loader) bundlesCollector(ctx context.Context) {
 				toBundleId, _ := strconv.ParseUint(bundles[len(bundles)-1].Id, 10, 64)
 
 				logger.Info().
+					Str("connection", loader.ConnectionName).
 					Int64("from", int64(fromBundleId)).
 					Int64("to", int64(toBundleId)).
 					Msg(fmt.Sprintf("fetched %v bundles successfully", len(bundles)))
@@ -128,7 +131,7 @@ func (loader *Loader) dataRowWorker(name string) {
 	for {
 		item, ok := <-loader.bundlesChannel
 		if !ok {
-			logger.Info().Msg(fmt.Sprintf("(%s) Finished", name))
+			logger.Info().Str("connection", loader.ConnectionName).Msg(fmt.Sprintf("(%s) Finished", name))
 			return
 		}
 
@@ -144,13 +147,14 @@ func (loader *Loader) dataRowWorker(name string) {
 				items = append(items, newRows...)
 				return nil
 			}, func(err error) {
-				logger.Error().Msg(fmt.Sprintf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error()))
+				logger.Error().Str("connection", loader.ConnectionName).Msg(fmt.Sprintf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error()))
 			})
 		}
 
 		loader.dataRowChannel <- items
 
 		logger.Info().
+			Str("connection", loader.ConnectionName).
 			Int64("fromBundleId", item.status.FromBundleId).
 			Str("toKey", item.status.ToKey).
 			Int64("toBundleId", item.status.ToBundleId).
