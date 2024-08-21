@@ -14,6 +14,7 @@ var (
 	PrometheusSyncStepFailedRetry *prometheus.CounterVec
 
 	PrometheusCurrentBundleHeight *prometheus.GaugeVec
+	PrometheusLastSyncDuration    *prometheus.GaugeVec
 )
 
 func StartPrometheus(port string) {
@@ -48,5 +49,9 @@ func init() {
 
 	PrometheusCurrentBundleHeight = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "current_bundle_height",
+	}, labelNames)
+
+	PrometheusLastSyncDuration = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "last_sync_duration",
 	}, labelNames)
 }
