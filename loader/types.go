@@ -14,8 +14,8 @@ type BundlesBusItem struct {
 }
 
 type Loader struct {
-	bundlesChannel chan BundlesBusItem
-	dataRowChannel chan []schema.DataRow
+	bundlesChannel     chan BundlesBusItem
+	destinationChannel chan destinations.DestinationBusItem
 
 	dataRowWaitGroup     sync.WaitGroup
 	destinationWaitGroup sync.WaitGroup

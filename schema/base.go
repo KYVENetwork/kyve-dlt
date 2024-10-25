@@ -79,31 +79,31 @@ CREATE TABLE IF NOT EXISTS %s (
     `, name)
 }
 
-func (t Base) DownloadAndConvertBundle(bundle collector.Bundle, extractedAt string) ([]DataRow, error) {
-	bundleBuffer, err := downloadBundle(bundle)
+func (t Base) DownloadAndConvertBundle(bundle collector.Bundle, extra ExtraData) (Result, error) {
+	downloadResult, err := downloadBundle(bundle, extra)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
 
 	var items []BaseItem
-	err = json.Unmarshal(bundleBuffer.Bytes(), &items)
+	err = json.Unmarshal(downloadResult.Data.Bytes(), &items)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
 
 	bundleId, _ := strconv.ParseUint(bundle.Id, 10, 64)
 
 	columns := make([]DataRow, 0)
 	for _, kyveItem := range items {
-		utils.AwaitEnoughMemory("TODO")
+		utils.AwaitEnoughMemory(extra.Name)
 
 		jsonValue, err := json.Marshal(kyveItem.Value)
 		if err != nil {
-			return nil, err
+			return Result{}, err
 		}
 		columns = append(columns, BaseRow{
 			_dlt_raw_id:       "",
-			_dlt_extracted_at: extractedAt,
+			_dlt_extracted_at: extra.ExtractedAt,
 			value:             string(jsonValue),
 			key:               kyveItem.Key,
 			bundle_id:         int64(bundleId),
@@ -111,5 +111,9 @@ func (t Base) DownloadAndConvertBundle(bundle collector.Bundle, extractedAt stri
 
 	}
 
-	return columns, nil
+	return Result{
+		Data:             columns,
+		CompressedSize:   downloadResult.CompressedSize,
+		UncompressedSize: downloadResult.UncompressedSize,
+	}, nil
 }

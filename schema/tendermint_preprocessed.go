@@ -115,21 +115,21 @@ CREATE TABLE IF NOT EXISTS %s (
     `, name)
 }
 
-func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle, extractedAt string) ([]DataRow, error) {
-	bundleBuffer, err := downloadBundle(bundle)
+func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle, extra ExtraData) (Result, error) {
+	downloadResult, err := downloadBundle(bundle, extra)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
 
 	var items []TendermintPreProcessedItem
-	err = json.Unmarshal(bundleBuffer.Bytes(), &items)
+	err = json.Unmarshal(downloadResult.Data.Bytes(), &items)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
 
 	columns := make([]DataRow, 0)
 	for _, kyveItem := range items {
-		utils.AwaitEnoughMemory("TODO")
+		utils.AwaitEnoughMemory(extra.Name)
 
 		prunedBlockResults := TendermintPreProcessedBlockResults{
 			Height:                kyveItem.Value.BlockResults.Height,
@@ -147,13 +147,13 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 
 		prunedJson, err := json.Marshal(prunedItem)
 		if err != nil {
-			return nil, err
+			return Result{}, err
 		}
 
 		bundleId, _ := strconv.ParseUint(bundle.Id, 10, 64)
 		columns = append(columns, TendermintPreProcessedRow{
 			_dlt_raw_id:       "",
-			_dlt_extracted_at: extractedAt,
+			_dlt_extracted_at: extra.ExtractedAt,
 			item_type:         "block",
 			value:             string(prunedJson),
 			height:            kyveItem.Key,
@@ -163,7 +163,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		for index, beginBlockItem := range kyveItem.Value.BlockResults.BeginBlockEvents {
 			columns = append(columns, TendermintPreProcessedRow{
 				_dlt_raw_id:       "",
-				_dlt_extracted_at: extractedAt,
+				_dlt_extracted_at: extra.ExtractedAt,
 				item_type:         "begin_block_event",
 				value:             string(beginBlockItem),
 				height:            kyveItem.Key,
@@ -174,7 +174,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		for index, txResult := range kyveItem.Value.BlockResults.TxsResults {
 			columns = append(columns, TendermintPreProcessedRow{
 				_dlt_raw_id:       "",
-				_dlt_extracted_at: extractedAt,
+				_dlt_extracted_at: extra.ExtractedAt,
 				item_type:         "tx_result",
 				value:             string(txResult),
 				height:            kyveItem.Key,
@@ -185,7 +185,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		for index, endBlockEvents := range kyveItem.Value.BlockResults.EndBlockEvents {
 			columns = append(columns, TendermintPreProcessedRow{
 				_dlt_raw_id:       "",
-				_dlt_extracted_at: extractedAt,
+				_dlt_extracted_at: extra.ExtractedAt,
 				item_type:         "end_block_event",
 				value:             string(endBlockEvents),
 				height:            kyveItem.Key,
@@ -195,5 +195,9 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 		}
 	}
 
-	return columns, nil
+	return Result{
+		Data:             columns,
+		CompressedSize:   downloadResult.CompressedSize,
+		UncompressedSize: downloadResult.UncompressedSize,
+	}, nil
 }

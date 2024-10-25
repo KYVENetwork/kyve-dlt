@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-func downloadBundle(bundle collector.Bundle) (*bytes.Buffer, error) {
+func downloadBundle(bundle collector.Bundle, extra ExtraData) (DownloadResult, error) {
 
 	baseUrl := ""
 	switch bundle.StorageProviderId {
@@ -26,7 +26,7 @@ func downloadBundle(bundle collector.Bundle) (*bytes.Buffer, error) {
 	// Download bundle
 	resp, err := http.Get(fmt.Sprintf("%s/%s", baseUrl, bundle.StorageId))
 	if err != nil {
-		return nil, err
+		return DownloadResult{}, err
 	}
 	defer resp.Body.Close()
 
@@ -35,20 +35,24 @@ func downloadBundle(bundle collector.Bundle) (*bytes.Buffer, error) {
 	rawData := responseBuffer.Bytes()
 
 	// Verify checksum
-	utils.AwaitEnoughMemory("TODO")
+	utils.AwaitEnoughMemory(extra.Name)
 	sha256hash := sha256.Sum256(rawData)
 	if fmt.Sprintf("%x", sha256hash) != bundle.DataHash {
-		return nil, errors.New("checksum does not match")
+		return DownloadResult{}, errors.New("checksum does not match")
 	}
 
 	// uncompress gzip
-	utils.AwaitEnoughMemory("TODO")
+	utils.AwaitEnoughMemory(extra.Name)
 	reader, err := gzip.NewReader(responseBuffer)
 	if err != nil {
-		return nil, err
+		return DownloadResult{}, err
 	}
 	bundleBuffer := new(bytes.Buffer)
 	bundleBuffer.ReadFrom(reader)
 
-	return bundleBuffer, nil
+	return DownloadResult{
+		Data:             bundleBuffer,
+		CompressedSize:   int64(len(rawData)),
+		UncompressedSize: int64(bundleBuffer.Len()),
+	}, nil
 }

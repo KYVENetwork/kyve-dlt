@@ -37,11 +37,17 @@ func NewBigQuery(config BigQueryConfig) BigQuery {
 	}
 }
 
+type BucketBusItem struct {
+	FileName     string
+	fromBundleId int64
+	toBundleId   int64
+}
+
 type BigQuery struct {
 	config         BigQueryConfig
-	dataRowChannel chan []schema.DataRow
+	dataRowChannel chan DestinationBusItem
 
-	bucketChannel     chan string
+	bucketChannel     chan BucketBusItem
 	bucketWaitGroup   sync.WaitGroup
 	bigQueryWaitGroup sync.WaitGroup
 
@@ -91,10 +97,10 @@ func (b *BigQuery) GetLatestBundleId() *int64 {
 	return &latestBundleId
 }
 
-func (b *BigQuery) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
+func (b *BigQuery) Initialize(schema schema.DataSource, destinationChannel chan DestinationBusItem) {
 	b.schema = schema
-	b.dataRowChannel = dataRowChannel
-	b.bucketChannel = make(chan string, 4)
+	b.dataRowChannel = destinationChannel
+	b.bucketChannel = make(chan BucketBusItem, b.config.BucketWorkerCount)
 }
 
 func (b *BigQuery) StartProcess(waitGroup *sync.WaitGroup) {
@@ -126,7 +132,7 @@ func (b *BigQuery) bucketWorker(workerId string) {
 	defer b.bucketWaitGroup.Done()
 
 	for {
-		itemRows, ok := <-b.dataRowChannel
+		item, ok := <-b.dataRowChannel
 		if !ok {
 			logger.Info().Str("worker-id", workerId).Msg("Finished")
 			return
@@ -138,7 +144,7 @@ func (b *BigQuery) bucketWorker(workerId string) {
 
 		csvWriter.Write(b.schema.GetCSVSchema())
 		// write items
-		for _, c := range itemRows {
+		for _, c := range item.Data {
 			err := csvWriter.Write(c.ConvertToCSVLine())
 			if err != nil {
 				panic(err)
@@ -154,9 +160,18 @@ func (b *BigQuery) bucketWorker(workerId string) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
-		b.bucketChannel <- fileName
+		b.bucketChannel <- BucketBusItem{
+			FileName:     fileName,
+			fromBundleId: item.FromBundleId,
+			toBundleId:   item.ToBundleId,
+		}
 
-		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("Uploaded %s - channel(csvFiles): %d, channel(uuid): %d", fileName, len(b.dataRowChannel), len(b.bucketChannel)))
+		logger.Info().
+			Str("worker-id", workerId).
+			Str("fileName", fileName).
+			Int64("fromBundleId", item.FromBundleId).
+			Int64("toBundleId", item.ToBundleId).
+			Msg(fmt.Sprintf("uploaded"))
 	}
 }
 
@@ -171,12 +186,17 @@ func (b *BigQuery) bigqueryWorker(workerId string) {
 		}
 
 		utils.TryWithExponentialBackoff(func() error {
-			return b.importCSVExplicitSchema(fmt.Sprintf("gs://%s/%s", b.config.BucketName, item))
+			return b.importCSVExplicitSchema(fmt.Sprintf("gs://%s/%s", b.config.BucketName, item.FileName))
 		}, func(err error) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
-		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("Imported %s - channel(uuid): %d", item, len(b.bucketChannel)))
+		logger.Info().
+			Str("worker-id", workerId).
+			Str("fileName", item.FileName).
+			Int64("fromBundleId", item.fromBundleId).
+			Int64("toBundleId", item.toBundleId).
+			Msg("imported")
 	}
 }
 

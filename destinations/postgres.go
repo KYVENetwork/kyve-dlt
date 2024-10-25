@@ -28,7 +28,7 @@ func NewPostgres(config PostgresConfig) Postgres {
 
 type Postgres struct {
 	config         PostgresConfig
-	dataRowChannel chan []schema.DataRow
+	dataRowChannel chan DestinationBusItem
 	db             *sql.DB
 
 	postgresWaitGroup sync.WaitGroup
@@ -57,9 +57,9 @@ func (p *Postgres) GetLatestBundleId() *int64 {
 	return latestBundleId
 }
 
-func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
+func (p *Postgres) Initialize(schema schema.DataSource, destinationChannel chan DestinationBusItem) {
 	p.schema = schema
-	p.dataRowChannel = dataRowChannel
+	p.dataRowChannel = destinationChannel
 
 	db, err := sql.Open("postgres", p.config.ConnectionUrl)
 	if err != nil {
@@ -92,20 +92,24 @@ func (p *Postgres) postgresWorker(workerId string) {
 	defer p.postgresWaitGroup.Done()
 
 	for {
-		items, ok := <-p.dataRowChannel
+		item, ok := <-p.dataRowChannel
 		if !ok {
 			logger.Debug().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
-		_ = items
 
 		utils.TryWithExponentialBackoff(func() error {
-			return p.bulkInsert(items, p.config.RowInsertLimit)
+			return p.bulkInsert(item.Data, p.config.RowInsertLimit)
 		}, func(err error) {
 			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
 		})
 
-		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("inserted %d rows. - channel(dataRow): %d", len(items), len(p.dataRowChannel)))
+		logger.Info().
+			Str("worker-id", workerId).
+			Int64("fromBundleId", item.FromBundleId).
+			Int64("toBundleId", item.ToBundleId).
+			Int("rows", len(item.Data)).
+			Msg("inserted")
 	}
 }
 
