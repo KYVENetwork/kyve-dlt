@@ -63,6 +63,21 @@ func (loader *Loader) Start(ctx context.Context, y bool, sync bool) {
 		}
 	}
 
+	loaderConfigStatus := utils.LoaderConfigProperties{
+		SyncId:         loader.statusProperties.syncId,
+		Schema:         loader.statusProperties.schemaType,
+		Destination:    loader.statusProperties.destinationType,
+		ChannelSize:    loader.config.ChannelSize,
+		CSVWorkerCount: loader.config.CsvWorkerCount,
+		MaxRamGB:       utils.GLOBAL_MAX_RAM_GB,
+		PoolId:         loader.sourceConfig.PoolId,
+		Endpoint:       loader.sourceConfig.Endpoint,
+		FromBundleId:   loader.sourceConfig.FromBundleId,
+		ToBundleId:     loader.sourceConfig.ToBundleId,
+	}
+	loader.statusProperties.StartTime = time.Now()
+	utils.TrackSyncStarted(loaderConfigStatus)
+
 	//Fetches bundles from api.kyve.network
 	go loader.bundlesCollector(ctx)
 
@@ -80,6 +95,13 @@ func (loader *Loader) Start(ctx context.Context, y bool, sync bool) {
 	loader.destinationWaitGroup.Wait()
 
 	loader.destination.Close()
+
+	utils.TrackSyncFinished(loaderConfigStatus, utils.SyncFinishedProperties{
+		Duration:                time.Now().Unix() - loader.statusProperties.StartTime.Unix(),
+		CompressedBytesSynced:   loader.statusProperties.compressedBytesSynced.Load(),
+		UncompressedBytesSynced: loader.statusProperties.uncompressedBytesSynced.Load(),
+		BundlesSynced:           loader.statusProperties.bundlesSynced.Load(),
+	})
 }
 
 func (loader *Loader) bundlesCollector(ctx context.Context) {
@@ -174,6 +196,13 @@ func (loader *Loader) dataRowWorker(name string) {
 
 		utils.PrometheusBundlesSynced.WithLabelValues(loader.ConnectionName).Add(float64(item.status.ToBundleId - item.status.FromBundleId + 1))
 		utils.PrometheusCurrentBundleHeight.WithLabelValues(loader.ConnectionName).Set(float64(item.status.ToBundleId))
+
+		loader.statusProperties.compressedBytesSynced.Add(totalCompressedSize)
+		loader.statusProperties.uncompressedBytesSynced.Add(totalUncompressedSize)
+		loader.statusProperties.bundlesSynced.Add(int64(len(item.bundles)))
+
+		utils.PrometheusCompressedBytesSynced.WithLabelValues(loader.ConnectionName).Add(float64(totalCompressedSize))
+		utils.PrometheusUncompressedBytesSynced.WithLabelValues(loader.ConnectionName).Add(float64(totalUncompressedSize))
 
 		logger.Info().
 			Str("worker-id", name).

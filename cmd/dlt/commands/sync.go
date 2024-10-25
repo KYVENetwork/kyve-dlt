@@ -25,6 +25,8 @@ func init() {
 
 	syncCmd.Flags().BoolVarP(&force, "force", "f", false, "skips checks if data was already loaded in destination")
 
+	syncCmd.Flags().BoolVar(&utils.OptOut, "opt-out", false, "disable the collection of anonymous usage data")
+
 	rootCmd.AddCommand(syncCmd)
 }
 

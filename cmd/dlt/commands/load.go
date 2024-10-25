@@ -34,6 +34,8 @@ func init() {
 
 	loadCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
 
+	loadCmd.Flags().BoolVar(&utils.OptOut, "opt-out", false, "disable the collection of anonymous usage data")
+
 	rootCmd.AddCommand(loadCmd)
 }
 
