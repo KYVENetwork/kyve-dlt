@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	destinationsCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	destinationsCmd.Flags().StringVar(&cfgPath, "config", "", "set custom config path")
 
 	destinationsCmd.AddCommand(destinationsAddCmd)
 	destinationsCmd.AddCommand(destinationsListCmd)
@@ -27,6 +27,8 @@ var destinationsAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new destination",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		configNode, err := utils.LoadConfigWithComments(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")
@@ -70,6 +72,8 @@ var destinationsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all specified destinations",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		config, err := utils.LoadConfig(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")
@@ -138,6 +142,8 @@ var destinationsRemoveCmd = &cobra.Command{
 	Short: "Remove a destination by name",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		configNode, err := utils.LoadConfigWithComments(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")

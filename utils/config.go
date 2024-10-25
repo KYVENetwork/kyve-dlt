@@ -220,6 +220,25 @@ func GetConnectionDetails(config *Config, connectionName string) (Source, Destin
 	return source, destination, nil
 }
 
+func GetConfigPath(configPath string) string {
+	if configPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+
+		dltDir := filepath.Join(home, ".kyve-dlt")
+		if _, err = os.Stat(dltDir); os.IsNotExist(err) {
+			if err = os.Mkdir(dltDir, 0o755); err != nil {
+				panic(err)
+			}
+		}
+
+		configPath = filepath.Join(dltDir, "config.yml")
+	}
+	return configPath
+}
+
 func GetNodeValue(node yaml.Node, key string) string {
 	for i := 0; i < len(node.Content); i += 2 {
 		if node.Content[i].Value == key {
@@ -230,6 +249,21 @@ func GetNodeValue(node yaml.Node, key string) string {
 }
 
 func InitConfig(configPath string) error {
+	if configPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+
+		dltDir := filepath.Join(home, ".kyve-dlt")
+		if _, err = os.Stat(dltDir); os.IsNotExist(err) {
+			if err = os.Mkdir(dltDir, 0o755); err != nil {
+				return err
+			}
+		}
+
+		configPath = filepath.Join(dltDir, "config.yml")
+	}
 	// Create default config if config doesn't exist
 	if _, err := os.Stat(configPath); err != nil {
 		logger.Info().Str("path", configPath).Msg("creating default config")

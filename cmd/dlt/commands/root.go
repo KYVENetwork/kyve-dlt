@@ -8,7 +8,7 @@ import (
 
 var (
 	all            bool
-	configPath     string
+	cfgPath        string
 	connectionName string
 	force          bool
 	fromBundleId   int64
