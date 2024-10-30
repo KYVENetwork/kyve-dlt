@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	sourcesCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	sourcesCmd.Flags().StringVar(&cfgPath, "config", "", "set custom config path")
 
 	sourcesCmd.AddCommand(sourcesAddCmd)
 	sourcesCmd.AddCommand(sourcesListCmd)
@@ -27,6 +27,8 @@ var sourcesAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new source",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		configNode, err := utils.LoadConfigWithComments(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")
@@ -84,6 +86,8 @@ var sourcesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all specified sources",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		config, err := utils.LoadConfig(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")
@@ -116,6 +120,8 @@ var sourcesRemoveCmd = &cobra.Command{
 	Short: "Remove a source by name",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		configNode, err := utils.LoadConfigWithComments(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")

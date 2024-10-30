@@ -9,7 +9,6 @@ type Status struct {
 	ToBundleId   int64
 	FromKey      string
 	ToKey        string
-	DataSize     int64
 	ExtractedAt  string
 }
 

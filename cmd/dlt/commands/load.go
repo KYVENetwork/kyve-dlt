@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	loadCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	loadCmd.Flags().StringVar(&cfgPath, "config", "", "set custom config path")
 
 	loadCmd.Flags().StringVarP(&connectionName, "connection", "c", "", "name of the connection to sync")
 	if err := loadCmd.MarkFlagRequired("connection"); err != nil {
@@ -34,6 +34,8 @@ func init() {
 
 	loadCmd.Flags().BoolVarP(&y, "yes", "y", false, "automatically answer yes for all questions")
 
+	loadCmd.Flags().BoolVar(&utils.OptOut, "opt-out", false, "disable the collection of anonymous usage data")
+
 	rootCmd.AddCommand(loadCmd)
 }
 
@@ -41,6 +43,8 @@ var loadCmd = &cobra.Command{
 	Use:   "load",
 	Short: "Start the data loading process",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		if cmd.Flags().Changed("to-bundle-id") {
 			setTo = true
 		}

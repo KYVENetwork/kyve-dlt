@@ -3,6 +3,7 @@ package loader
 import (
 	"context"
 	"fmt"
+	"github.com/KYVENetwork/KYVE-DLT/destinations"
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
@@ -19,9 +20,9 @@ func (loader *Loader) Start(ctx context.Context, y bool, sync bool) {
 	logger.Debug().Msg(fmt.Sprintf("ConcurrencyConfig: %#v", loader.config))
 
 	loader.bundlesChannel = make(chan BundlesBusItem, loader.config.ChannelSize)
-	loader.dataRowChannel = make(chan []schema.DataRow, loader.config.ChannelSize)
+	loader.destinationChannel = make(chan destinations.DestinationBusItem, loader.config.ChannelSize)
 
-	loader.destination.Initialize(loader.config.SourceSchema, loader.dataRowChannel)
+	loader.destination.Initialize(loader.config.SourceSchema, loader.destinationChannel)
 
 	loader.latestBundleId = loader.destination.GetLatestBundleId()
 	if loader.latestBundleId != nil {
@@ -62,23 +63,45 @@ func (loader *Loader) Start(ctx context.Context, y bool, sync bool) {
 		}
 	}
 
+	loaderConfigStatus := utils.LoaderConfigProperties{
+		SyncId:         loader.statusProperties.syncId,
+		Schema:         loader.statusProperties.schemaType,
+		Destination:    loader.statusProperties.destinationType,
+		ChannelSize:    loader.config.ChannelSize,
+		CSVWorkerCount: loader.config.CsvWorkerCount,
+		MaxRamGB:       utils.GLOBAL_MAX_RAM_GB,
+		PoolId:         loader.sourceConfig.PoolId,
+		Endpoint:       loader.sourceConfig.Endpoint,
+		FromBundleId:   loader.sourceConfig.FromBundleId,
+		ToBundleId:     loader.sourceConfig.ToBundleId,
+	}
+	loader.statusProperties.StartTime = time.Now()
+	utils.TrackSyncStarted(loaderConfigStatus)
+
 	//Fetches bundles from api.kyve.network
 	go loader.bundlesCollector(ctx)
 
 	// Downloads bundles from Arweave and converts preprocesses them
 	loader.dataRowWaitGroup.Add(loader.config.CsvWorkerCount)
 	for i := 1; i <= loader.config.CsvWorkerCount; i++ {
-		go loader.dataRowWorker(fmt.Sprintf("CSV - %d", i))
+		go loader.dataRowWorker(fmt.Sprintf("csv-%d", i))
 	}
 
 	loader.destination.StartProcess(&loader.destinationWaitGroup)
 
 	loader.dataRowWaitGroup.Wait()
-	close(loader.dataRowChannel)
+	close(loader.destinationChannel)
 
 	loader.destinationWaitGroup.Wait()
 
 	loader.destination.Close()
+
+	utils.TrackSyncFinished(loaderConfigStatus, utils.SyncFinishedProperties{
+		Duration:                time.Now().Unix() - loader.statusProperties.StartTime.Unix(),
+		CompressedBytesSynced:   loader.statusProperties.compressedBytesSynced.Load(),
+		UncompressedBytesSynced: loader.statusProperties.uncompressedBytesSynced.Load(),
+		BundlesSynced:           loader.statusProperties.bundlesSynced.Load(),
+	})
 }
 
 func (loader *Loader) bundlesCollector(ctx context.Context) {
@@ -108,7 +131,8 @@ func (loader *Loader) bundlesCollector(ctx context.Context) {
 					Str("connection", loader.ConnectionName).
 					Int64("from", int64(fromBundleId)).
 					Int64("to", int64(toBundleId)).
-					Msg(fmt.Sprintf("fetched %v bundles successfully", len(bundles)))
+					Int("amount", len(bundles)).
+					Msg("fetched")
 
 				loader.bundlesChannel <- BundlesBusItem{
 					bundles: bundles,
@@ -117,7 +141,6 @@ func (loader *Loader) bundlesCollector(ctx context.Context) {
 						ToBundleId:   int64(toBundleId),
 						FromKey:      bundles[0].FromKey,
 						ToKey:        bundles[len(bundles)-1].ToKey,
-						DataSize:     0,
 						ExtractedAt:  time.Now().Format(time.RFC3339Nano),
 					},
 				}
@@ -132,20 +155,32 @@ func (loader *Loader) dataRowWorker(name string) {
 	for {
 		item, ok := <-loader.bundlesChannel
 		if !ok {
-			logger.Info().Str("connection", loader.ConnectionName).Msg(fmt.Sprintf("(%s) Finished", name))
+			logger.Info().
+				Str("connection", loader.ConnectionName).
+				Str("worker-id", name).
+				Msg("finished")
 			return
 		}
 
 		utils.AwaitEnoughMemory(name)
 
 		items := make([]schema.DataRow, 0)
+
+		totalUncompressedSize := int64(0)
+		totalCompressedSize := int64(0)
+
 		for _, k := range item.bundles {
 			utils.TryWithExponentialBackoff(func() error {
-				newRows, err := loader.config.SourceSchema.DownloadAndConvertBundle(k, item.status.ExtractedAt)
+				result, err := loader.config.SourceSchema.DownloadAndConvertBundle(k, schema.ExtraData{
+					Name:        name,
+					ExtractedAt: item.status.ExtractedAt,
+				})
 				if err != nil {
 					return err
 				}
-				items = append(items, newRows...)
+				items = append(items, result.Data...)
+				totalUncompressedSize += result.UncompressedSize
+				totalCompressedSize += result.CompressedSize
 				return nil
 			}, func(err error) {
 				logger.Error().Str("connection", loader.ConnectionName).Msg(fmt.Sprintf("(%s) error: %s \nRetry in 5 seconds.\n", name, err.Error()))
@@ -153,17 +188,30 @@ func (loader *Loader) dataRowWorker(name string) {
 			})
 		}
 
-		loader.dataRowChannel <- items
+		loader.destinationChannel <- destinations.DestinationBusItem{
+			Data:         items,
+			FromBundleId: item.status.FromBundleId,
+			ToBundleId:   item.status.ToBundleId,
+		}
 
 		utils.PrometheusBundlesSynced.WithLabelValues(loader.ConnectionName).Add(float64(item.status.ToBundleId - item.status.FromBundleId + 1))
 		utils.PrometheusCurrentBundleHeight.WithLabelValues(loader.ConnectionName).Set(float64(item.status.ToBundleId))
 
+		loader.statusProperties.compressedBytesSynced.Add(totalCompressedSize)
+		loader.statusProperties.uncompressedBytesSynced.Add(totalUncompressedSize)
+		loader.statusProperties.bundlesSynced.Add(int64(len(item.bundles)))
+
+		utils.PrometheusCompressedBytesSynced.WithLabelValues(loader.ConnectionName).Add(float64(totalCompressedSize))
+		utils.PrometheusUncompressedBytesSynced.WithLabelValues(loader.ConnectionName).Add(float64(totalUncompressedSize))
+
 		logger.Info().
+			Str("worker-id", name).
 			Str("connection", loader.ConnectionName).
 			Int64("fromBundleId", item.status.FromBundleId).
 			Str("toKey", item.status.ToKey).
 			Int64("toBundleId", item.status.ToBundleId).
 			Int("bundles", len(item.bundles)).
+			Int64("size", totalCompressedSize).
 			Msg("converted")
 	}
 

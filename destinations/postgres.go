@@ -6,6 +6,7 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,17 +24,20 @@ func NewPostgres(config PostgresConfig) Postgres {
 	return Postgres{
 		config:         config,
 		dataRowChannel: nil,
+		logger:         utils.DltLogger("Postgres"),
 	}
 }
 
 type Postgres struct {
 	config         PostgresConfig
-	dataRowChannel chan []schema.DataRow
+	dataRowChannel chan DestinationBusItem
 	db             *sql.DB
 
 	postgresWaitGroup sync.WaitGroup
 
 	schema schema.DataSource
+
+	logger zerolog.Logger
 }
 
 func (p *Postgres) Close() {
@@ -57,9 +61,9 @@ func (p *Postgres) GetLatestBundleId() *int64 {
 	return latestBundleId
 }
 
-func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []schema.DataRow) {
+func (p *Postgres) Initialize(schema schema.DataSource, destinationChannel chan DestinationBusItem) {
 	p.schema = schema
-	p.dataRowChannel = dataRowChannel
+	p.dataRowChannel = destinationChannel
 
 	db, err := sql.Open("postgres", p.config.ConnectionUrl)
 	if err != nil {
@@ -67,7 +71,7 @@ func (p *Postgres) Initialize(schema schema.DataSource, dataRowChannel chan []sc
 	}
 
 	p.db = db
-	logger.Info().Msg("postgres connection established")
+	p.logger.Info().Msg("postgres connection established")
 
 	if _, tableErr := p.db.Exec(p.schema.GetPostgresCreateTableCommand(p.config.TableName)); tableErr != nil {
 		panic(tableErr)
@@ -92,20 +96,24 @@ func (p *Postgres) postgresWorker(workerId string) {
 	defer p.postgresWaitGroup.Done()
 
 	for {
-		items, ok := <-p.dataRowChannel
+		item, ok := <-p.dataRowChannel
 		if !ok {
-			logger.Debug().Str("worker-id", workerId).Msg("Finished")
+			p.logger.Debug().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
-		_ = items
 
 		utils.TryWithExponentialBackoff(func() error {
-			return p.bulkInsert(items, p.config.RowInsertLimit)
+			return p.bulkInsert(item.Data, p.config.RowInsertLimit)
 		}, func(err error) {
-			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
+			p.logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
 		})
 
-		logger.Info().Str("worker-id", workerId).Msg(fmt.Sprintf("inserted %d rows. - channel(dataRow): %d", len(items), len(p.dataRowChannel)))
+		p.logger.Info().
+			Str("worker-id", workerId).
+			Int64("fromBundleId", item.FromBundleId).
+			Int64("toBundleId", item.ToBundleId).
+			Int("rows", len(item.Data)).
+			Msg("inserted")
 	}
 }
 

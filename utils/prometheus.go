@@ -15,6 +15,9 @@ var (
 
 	PrometheusCurrentBundleHeight *prometheus.GaugeVec
 	PrometheusLastSyncDuration    *prometheus.GaugeVec
+
+	PrometheusCompressedBytesSynced   *prometheus.CounterVec
+	PrometheusUncompressedBytesSynced *prometheus.CounterVec
 )
 
 func StartPrometheus(port string) {
@@ -53,5 +56,13 @@ func init() {
 
 	PrometheusLastSyncDuration = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "last_sync_duration",
+	}, labelNames)
+
+	PrometheusCompressedBytesSynced = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "compressed_bytes_synced",
+	}, labelNames)
+
+	PrometheusUncompressedBytesSynced = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "uncompressed_bytes_synced",
 	}, labelNames)
 }

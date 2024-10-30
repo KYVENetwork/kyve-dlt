@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	connectionsCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	connectionsCmd.Flags().StringVar(&cfgPath, "config", "", "set custom config path")
 
 	connectionsCmd.AddCommand(connectionsAddCmd)
 	connectionsCmd.AddCommand(connectionsListCmd)
@@ -27,6 +27,8 @@ var connectionsAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new connection",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		configNode, err := utils.LoadConfigWithComments(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")
@@ -95,6 +97,8 @@ var connectionsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all connections",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		config, err := utils.LoadConfig(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")
@@ -126,6 +130,8 @@ var connectionsRemoveCmd = &cobra.Command{
 	Short: "Remove a connection by name",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		configNode, err := utils.LoadConfigWithComments(configPath)
 		if err != nil {
 			logger.Error().Str("err", err.Error()).Msg("failed to load config")

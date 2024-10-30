@@ -7,7 +7,8 @@ import (
 )
 
 func init() {
-	initCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	initCmd.Flags().StringVar(&cfgPath, "config", "", "set custom config path")
+
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -15,6 +16,8 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize dlt",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		if err := utils.InitConfig(configPath); err != nil {
 			logger.Error().Msg(err.Error())
 			return
