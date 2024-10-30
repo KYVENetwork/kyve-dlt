@@ -6,7 +6,10 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
+	"github.com/google/uuid"
 	"math"
+	"runtime/debug"
+	"sync/atomic"
 )
 
 func SetupLoader(configPath, connection string, setTo bool, from, to int64, force bool) (*Loader, error) {
@@ -20,6 +23,7 @@ func SetupLoader(configPath, connection string, setTo bool, from, to int64, forc
 	}
 
 	utils.GLOBAL_MAX_RAM_GB = uint64(config.Loader.MaxRamGB)
+	debug.SetMemoryLimit(int64(config.Loader.MaxRamGB * 1024 * 1024 * 1024))
 
 	source, destination, err := utils.GetConnectionDetails(config, connection)
 	if err != nil {
@@ -78,5 +82,14 @@ func SetupLoader(configPath, connection string, setTo bool, from, to int64, forc
 		SourceSchema:   sourceSchema,
 	}
 
-	return NewLoader(loaderConfig, sourceConfig, dest, connection), nil
+	statusProperties := StatusProperties{
+		syncId:                  uuid.New().String(),
+		schemaType:              source.Schema,
+		destinationType:         destination.Type,
+		uncompressedBytesSynced: new(atomic.Int64),
+		compressedBytesSynced:   new(atomic.Int64),
+		bundlesSynced:           new(atomic.Int64),
+	}
+
+	return NewLoader(loaderConfig, sourceConfig, dest, connection, statusProperties), nil
 }

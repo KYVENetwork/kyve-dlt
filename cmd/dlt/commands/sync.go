@@ -17,13 +17,15 @@ import (
 )
 
 func init() {
-	syncCmd.Flags().StringVar(&configPath, "config", utils.DefaultHomePath, "set custom config path")
+	syncCmd.Flags().StringVar(&cfgPath, "config", "", "set custom config path")
 
 	syncCmd.Flags().StringVarP(&connectionName, "connections", "c", "", "name of the connections to sync (comma separated)")
 
 	syncCmd.Flags().BoolVarP(&all, "all", "a", false, "sync all specified connections")
 
 	syncCmd.Flags().BoolVarP(&force, "force", "f", false, "skips checks if data was already loaded in destination")
+
+	syncCmd.Flags().BoolVar(&utils.OptOut, "opt-out", false, "disable the collection of anonymous usage data")
 
 	rootCmd.AddCommand(syncCmd)
 }
@@ -32,6 +34,8 @@ var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Run a supervised incremental sync",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := utils.GetConfigPath(cfgPath)
+
 		if connectionName == "" && !all {
 			logger.Error().Msg("either --connections or --all is required")
 			return
