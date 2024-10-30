@@ -21,6 +21,8 @@ func downloadBundle(bundle collector.Bundle, extra ExtraData) (DownloadResult, e
 		baseUrl = "https://arweave.net"
 	case "3":
 		baseUrl = "https://storage.kyve.network"
+	case "4":
+		baseUrl = "https://arweave.net"
 	}
 
 	// Download bundle
