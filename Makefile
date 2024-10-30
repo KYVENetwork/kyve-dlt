@@ -1,10 +1,12 @@
 COMMIT := $(shell git log -1 --format='%H')
-VERSION := 1.0-rc0 # $(shell echo $(shell git describe --tags) | sed 's/^v//')
+VERSION := 1.0.0 # $(shell echo $(shell git describe --tags) | sed 's/^v//')
 
 ldflags = -X github.com/KYVENetwork/KYVE-DLT/cmd/dlt/commands.Version=$(VERSION) \
-		  -X github.com/KYVENetwork/KYVE-DLT/cmd/dlt/commands.Commit=$(COMMIT)
+		  -X github.com/KYVENetwork/KYVE-DLT/cmd/dlt/commands.Commit=$(COMMIT) \
+		  -s \
+		  -w
 
-BUILD_FLAGS := -ldflags '$(ldflags)' -trimpath
+BUILD_FLAGS := -ldflags '$(ldflags)' -trimpath -buildvcs=false
 
 .PHONY: build format lint release
 
@@ -16,7 +18,7 @@ all: format lint build
 
 build:
 	@echo "🤖 Building KYVE-DLT ..."
-	@go build $(BUILD_FLAGS) -o "$(PWD)/build/" ./cmd/dlt
+	@CGO_ENABLED=0 go build $(BUILD_FLAGS) -o "$(PWD)/build/" ./cmd/dlt
 	@echo "✅ Completed build!"
 
 ###############################################################################
