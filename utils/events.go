@@ -118,7 +118,6 @@ func trackEvent(name string, properties analytics.Properties) {
 	if OptOut {
 		return
 	}
-	fmt.Printf("Track %s: %#v", name, properties)
 
 	userId, err := getUserId()
 	if err != nil {

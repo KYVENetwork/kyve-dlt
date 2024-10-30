@@ -10,6 +10,7 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 	"io"
@@ -34,6 +35,7 @@ func NewBigQuery(config BigQueryConfig) BigQuery {
 	return BigQuery{
 		config:         config,
 		dataRowChannel: nil,
+		logger:         utils.DltLogger("BigQuery"),
 	}
 }
 
@@ -52,6 +54,8 @@ type BigQuery struct {
 	bigQueryWaitGroup sync.WaitGroup
 
 	schema schema.DataSource
+
+	logger zerolog.Logger
 }
 
 func (b *BigQuery) Close() {}
@@ -61,7 +65,7 @@ func (b *BigQuery) GetLatestBundleId() *int64 {
 
 	client, err := bigquery.NewClient(ctx, b.config.ProjectId)
 	if err != nil {
-		logger.Error().Msg("failed to create BigQuery client")
+		b.logger.Error().Msg("failed to create BigQuery client")
 		panic(err)
 	}
 
@@ -73,7 +77,7 @@ func (b *BigQuery) GetLatestBundleId() *int64 {
 		// Check if the error is a NotFound error, which indicates that the table does not exist
 		var apiErr *googleapi.Error
 		if errors.As(err, &apiErr) && apiErr.Code == 404 {
-			logger.Debug().Msg("BigQuery table does not exist yet")
+			b.logger.Debug().Msg("BigQuery table does not exist yet")
 			return nil
 		}
 		panic(err)
@@ -87,7 +91,7 @@ func (b *BigQuery) GetLatestBundleId() *int64 {
 			break
 		}
 		if err != nil {
-			logger.Error().Str("err", err.Error()).Msg("BigQuery iterator failed")
+			b.logger.Error().Str("err", err.Error()).Msg("BigQuery iterator failed")
 			return nil
 		}
 		if row[0] != nil {
@@ -134,7 +138,7 @@ func (b *BigQuery) bucketWorker(workerId string) {
 	for {
 		item, ok := <-b.dataRowChannel
 		if !ok {
-			logger.Info().Str("worker-id", workerId).Msg("Finished")
+			b.logger.Info().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 
@@ -157,7 +161,7 @@ func (b *BigQuery) bucketWorker(workerId string) {
 		utils.TryWithExponentialBackoff(func() error {
 			return b.uploadCloudBucket(b.config.BucketName, fileName, csvBuffer)
 		}, func(err error) {
-			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
+			b.logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
 		b.bucketChannel <- BucketBusItem{
@@ -166,7 +170,7 @@ func (b *BigQuery) bucketWorker(workerId string) {
 			toBundleId:   item.ToBundleId,
 		}
 
-		logger.Info().
+		b.logger.Info().
 			Str("worker-id", workerId).
 			Str("fileName", fileName).
 			Int64("fromBundleId", item.FromBundleId).
@@ -181,17 +185,17 @@ func (b *BigQuery) bigqueryWorker(workerId string) {
 	for {
 		item, ok := <-b.bucketChannel
 		if !ok {
-			logger.Info().Str("worker-id", workerId).Msg("Finished")
+			b.logger.Info().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 
 		utils.TryWithExponentialBackoff(func() error {
 			return b.importCSVExplicitSchema(fmt.Sprintf("gs://%s/%s", b.config.BucketName, item.FileName))
 		}, func(err error) {
-			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
+			b.logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("error, retry in 5 seconds")
 		})
 
-		logger.Info().
+		b.logger.Info().
 			Str("worker-id", workerId).
 			Str("fileName", item.FileName).
 			Int64("fromBundleId", item.fromBundleId).

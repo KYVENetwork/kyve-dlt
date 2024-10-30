@@ -6,6 +6,7 @@ import (
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,6 +24,7 @@ func NewPostgres(config PostgresConfig) Postgres {
 	return Postgres{
 		config:         config,
 		dataRowChannel: nil,
+		logger:         utils.DltLogger("Postgres"),
 	}
 }
 
@@ -34,6 +36,8 @@ type Postgres struct {
 	postgresWaitGroup sync.WaitGroup
 
 	schema schema.DataSource
+
+	logger zerolog.Logger
 }
 
 func (p *Postgres) Close() {
@@ -67,7 +71,7 @@ func (p *Postgres) Initialize(schema schema.DataSource, destinationChannel chan 
 	}
 
 	p.db = db
-	logger.Info().Msg("postgres connection established")
+	p.logger.Info().Msg("postgres connection established")
 
 	if _, tableErr := p.db.Exec(p.schema.GetPostgresCreateTableCommand(p.config.TableName)); tableErr != nil {
 		panic(tableErr)
@@ -94,17 +98,17 @@ func (p *Postgres) postgresWorker(workerId string) {
 	for {
 		item, ok := <-p.dataRowChannel
 		if !ok {
-			logger.Debug().Str("worker-id", workerId).Msg("Finished")
+			p.logger.Debug().Str("worker-id", workerId).Msg("Finished")
 			return
 		}
 
 		utils.TryWithExponentialBackoff(func() error {
 			return p.bulkInsert(item.Data, p.config.RowInsertLimit)
 		}, func(err error) {
-			logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
+			p.logger.Error().Str("worker-id", workerId).Str("err", err.Error()).Msg("PostgresWorker error, retry in 5 seconds")
 		})
 
-		logger.Info().
+		p.logger.Info().
 			Str("worker-id", workerId).
 			Int64("fromBundleId", item.FromBundleId).
 			Int64("toBundleId", item.ToBundleId).
