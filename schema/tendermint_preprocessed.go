@@ -1,13 +1,14 @@
 package schema
 
 import (
-	"cloud.google.com/go/bigquery"
 	"encoding/json"
 	"fmt"
+	"strconv"
+
+	"cloud.google.com/go/bigquery"
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
-	"strconv"
 )
 
 type TendermintPreProcessedItem struct {
@@ -19,6 +20,7 @@ type TendermintPreProcessedItem struct {
 			TxsResults            []json.RawMessage `json:"txs_results"`
 			BeginBlockEvents      []json.RawMessage `json:"begin_block_events"`
 			EndBlockEvents        []json.RawMessage `json:"end_block_events"`
+			FinalizeBlockEvents   []json.RawMessage `json:"finalize_block_events"`
 			ValidatorUpdates      []interface{}     `json:"validator_updates"`
 			ConsensusParamUpdates struct {
 			} `json:"consensus_param_updates"`
@@ -36,9 +38,9 @@ type TendermintPreProcessedBlockResults struct {
 	TxsResults            []json.RawMessage `json:"txs_results"`
 	BeginBlockEvents      []json.RawMessage `json:"begin_block_events"`
 	EndBlockEvents        []json.RawMessage `json:"end_block_events"`
+	FinalizeBlockEvents   []json.RawMessage `json:"finalize_block_events"`
 	ValidatorUpdates      []interface{}     `json:"validator_updates"`
-	ConsensusParamUpdates struct {
-	} `json:"consensus_param_updates"`
+	ConsensusParamUpdates struct{}          `json:"consensus_param_updates"`
 }
 
 type TendermintPreProcessedRow struct {
@@ -136,6 +138,7 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 			TxsResults:            nil,
 			BeginBlockEvents:      nil,
 			EndBlockEvents:        nil,
+			FinalizeBlockEvents:   nil,
 			ValidatorUpdates:      kyveItem.Value.BlockResults.ValidatorUpdates,
 			ConsensusParamUpdates: kyveItem.Value.BlockResults.ConsensusParamUpdates,
 		}
@@ -188,6 +191,17 @@ func (t TendermintPreProcessed) DownloadAndConvertBundle(bundle collector.Bundle
 				_dlt_extracted_at: extra.ExtractedAt,
 				item_type:         "end_block_event",
 				value:             string(endBlockEvents),
+				height:            kyveItem.Key,
+				array_index:       int64(index),
+				bundle_id:         int64(bundleId),
+			})
+		}
+		for index, finalizeBlockEvents := range kyveItem.Value.BlockResults.FinalizeBlockEvents {
+			columns = append(columns, TendermintPreProcessedRow{
+				_dlt_raw_id:       "",
+				_dlt_extracted_at: extra.ExtractedAt,
+				item_type:         "finalize_block_event",
+				value:             string(finalizeBlockEvents),
 				height:            kyveItem.Key,
 				array_index:       int64(index),
 				bundle_id:         int64(bundleId),
