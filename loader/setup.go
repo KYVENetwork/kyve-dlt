@@ -2,14 +2,15 @@ package loader
 
 import (
 	"fmt"
+	"math"
+	"runtime/debug"
+	"sync/atomic"
+
 	"github.com/KYVENetwork/KYVE-DLT/destinations"
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/schema"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
-	"math"
-	"runtime/debug"
-	"sync/atomic"
 )
 
 func SetupLoader(configPath, connection string, setTo bool, from, to int64, force bool) (*Loader, error) {
@@ -68,8 +69,8 @@ func SetupLoader(configPath, connection string, setTo bool, from, to int64, forc
 	switch source.Schema {
 	case "base":
 		sourceSchema = schema.Base{}
-	case "tendermint":
-		sourceSchema = schema.Tendermint{}
+	case "height":
+		sourceSchema = schema.Height{}
 	case "tendermint_preprocessed":
 		sourceSchema = schema.TendermintPreProcessed{}
 	default:

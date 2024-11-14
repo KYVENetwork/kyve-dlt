@@ -161,7 +161,7 @@ func CreateSourceEntry() yaml.Node {
 			{Kind: yaml.ScalarNode, Value: "endpoint"},
 			{Kind: yaml.ScalarNode, Value: PromptInputWithDefault("\033[36mEnter endpoint [default https://api.kyve.network]: \033[0m", "https://api.kyve.network")},
 			{Kind: yaml.ScalarNode, Value: "schema"},
-			{Kind: yaml.ScalarNode, Value: PromptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "tendermint", "tendermint_preprocessed"})},
+			{Kind: yaml.ScalarNode, Value: PromptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "height", "tendermint_preprocessed"})},
 		},
 	}
 }

@@ -47,7 +47,7 @@ var sourcesAddCmd = &cobra.Command{
 				{Kind: yaml.ScalarNode, Value: "endpoint"},
 				{Kind: yaml.ScalarNode, Value: utils.PromptInputWithDefault("\033[36mEnter endpoint [default https://api.kyve.network]: \033[0m", "https://api.kyve.network")},
 				{Kind: yaml.ScalarNode, Value: "schema"},
-				{Kind: yaml.ScalarNode, Value: utils.PromptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "tendermint", "tendermint_preprocessed"})},
+				{Kind: yaml.ScalarNode, Value: utils.PromptSchemaDropdown("\033[36mSelect schema: \033[0m", []string{"base", "height", "tendermint_preprocessed"})},
 			},
 		}
 

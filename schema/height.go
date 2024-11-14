@@ -1,21 +1,22 @@
 package schema
 
 import (
-	"cloud.google.com/go/bigquery"
 	"encoding/json"
 	"fmt"
+	"strconv"
+
+	"cloud.google.com/go/bigquery"
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
 	"github.com/google/uuid"
-	"strconv"
 )
 
-type TendermintItem struct {
+type HeightItem struct {
 	Key   string          `json:"key"`
 	Value json.RawMessage `json:"value"`
 }
 
-type TendermintRow struct {
+type HeightRow struct {
 	_dlt_raw_id       string
 	_dlt_extracted_at string
 	height            int64
@@ -23,7 +24,7 @@ type TendermintRow struct {
 	bundle_id         int64
 }
 
-func (t TendermintRow) ConvertToCSVLine() []string {
+func (t HeightRow) ConvertToCSVLine() []string {
 	return []string{
 		uuid.New().String(),
 		t._dlt_extracted_at,
@@ -33,9 +34,9 @@ func (t TendermintRow) ConvertToCSVLine() []string {
 	}
 }
 
-type Tendermint struct{}
+type Height struct{}
 
-func (t Tendermint) GetBigQuerySchema() bigquery.Schema {
+func (t Height) GetBigQuerySchema() bigquery.Schema {
 	return bigquery.Schema{
 		{Name: "_dlt_raw_id", Type: bigquery.StringFieldType},
 		{Name: "_dlt_extracted_at", Type: bigquery.TimestampFieldType},
@@ -45,18 +46,18 @@ func (t Tendermint) GetBigQuerySchema() bigquery.Schema {
 	}
 }
 
-func (t Tendermint) GetBigQueryTimePartitioning() *bigquery.TimePartitioning {
+func (t Height) GetBigQueryTimePartitioning() *bigquery.TimePartitioning {
 	return &bigquery.TimePartitioning{
 		Field: "_dlt_extracted_at",
 		Type:  bigquery.DayPartitioningType,
 	}
 }
 
-func (t Tendermint) GetBigQueryClustering() *bigquery.Clustering {
+func (t Height) GetBigQueryClustering() *bigquery.Clustering {
 	return &bigquery.Clustering{Fields: []string{"_dlt_extracted_at"}}
 }
 
-func (t Tendermint) GetCSVSchema() []string {
+func (t Height) GetCSVSchema() []string {
 	return []string{
 		"_dlt_raw_id",
 		"_dlt_extracted_at",
@@ -66,7 +67,7 @@ func (t Tendermint) GetCSVSchema() []string {
 	}
 }
 
-func (t Tendermint) GetPostgresCreateTableCommand(name string) string {
+func (t Height) GetPostgresCreateTableCommand(name string) string {
 	return fmt.Sprintf(`
 CREATE TABLE IF NOT EXISTS %s (
     _dlt_raw_id varchar NOT NULL,
@@ -79,13 +80,13 @@ CREATE TABLE IF NOT EXISTS %s (
     `, name)
 }
 
-func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle, extra ExtraData) (Result, error) {
+func (t Height) DownloadAndConvertBundle(bundle collector.Bundle, extra ExtraData) (Result, error) {
 	downloadResult, err := downloadBundle(bundle, extra)
 	if err != nil {
 		return Result{}, err
 	}
 
-	var items []TendermintItem
+	var items []HeightItem
 	err = json.Unmarshal(downloadResult.Data.Bytes(), &items)
 	if err != nil {
 		return Result{}, err
@@ -106,7 +107,7 @@ func (t Tendermint) DownloadAndConvertBundle(bundle collector.Bundle, extra Extr
 		if err != nil {
 			return Result{}, err
 		}
-		columns = append(columns, TendermintRow{
+		columns = append(columns, HeightRow{
 			_dlt_raw_id:       "",
 			_dlt_extracted_at: extra.ExtractedAt,
 			value:             string(jsonValue),
