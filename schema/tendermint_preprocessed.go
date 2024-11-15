@@ -22,8 +22,7 @@ type TendermintPreProcessedItem struct {
 			EndBlockEvents        []json.RawMessage `json:"end_block_events"`
 			FinalizeBlockEvents   []json.RawMessage `json:"finalize_block_events"`
 			ValidatorUpdates      []interface{}     `json:"validator_updates"`
-			ConsensusParamUpdates struct {
-			} `json:"consensus_param_updates"`
+			ConsensusParamUpdates struct{}          `json:"consensus_param_updates"`
 		} `json:"block_results"`
 	} `json:"value"`
 }
