@@ -13,38 +13,38 @@ sources:
     pool_id: 1
     batch_size: 20
     endpoint: "https://api.kyve.network"
-    # Column schema: base (default), tendermint, tendermint_preprocessed
+    # Column schema: base (default), height, tendermint_preprocessed
     schema: "tendermint_preprocessed"
   - name: archway
     pool_id: 2
     batch_size: 20
     endpoint: "https://api.kyve.network"
-    # Column schema: base (default), tendermint, tendermint_preprocessed
-    schema: "tendermint"
+    # Column schema: base (default), height, tendermint_preprocessed
+    schema: "height"
   - name: axelar
     pool_id: 3
     batch_size: 20
     endpoint: "https://api.kyve.network"
-    # Column schema: base (default), tendermint, tendermint_preprocessed
-    schema: "tendermint"
+    # Column schema: base (default), height, tendermint_preprocessed
+    schema: "height"
   - name: cronos
     pool_id: 5
     batch_size: 20
     endpoint: "https://api.kyve.network"
-    # Column schema: base (default), tendermint, tendermint_preprocessed
-    schema: "tendermint"
+    # Column schema: base (default), height, tendermint_preprocessed
+    schema: "height"
   - name: noble
     pool_id: 7
     batch_size: 20
     endpoint: "https://api.kyve.network"
-    # Column schema: base (default), tendermint, tendermint_preprocessed
-    schema: "tendermint"
+    # Column schema: base (default), height, tendermint_preprocessed
+    schema: "height"
   - name: celestia
     pool_id: 9
     batch_size: 20
     endpoint: "https://api.kyve.network"
-    # Column schema: base (default), tendermint, tendermint_preprocessed
-    schema: "tendermint"
+    # Column schema: base (default), height, tendermint_preprocessed
+    schema: "height"
 
 # --- DESTINATION CONFIGURATION ---
 # Supported destinations types: big_query, postgres

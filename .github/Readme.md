@@ -81,7 +81,7 @@ dlt connections  {add|remove|list}
 This schema supports all KYVE datasets by default and consists of the core `key` and `value` structure that is required by the KYVE protocol.
 The `key` is the unique identifier of the data item in a data pool (e.g. height of a block, timestamp), whereas the `value` includes the actual data.
 
-### Tendermint
+### Height
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -96,7 +96,7 @@ The `key` is the unique identifier of the data item in a data pool (e.g. height 
   "required": ["_dlt_raw_id", "_dlt_extracted_at", "key", "value", "bundle_id"]
 }
 ```
-This schema is supported for all Tendermint pools (runtime: `@kyvejs/tendermint`). Instead of using the raw key, it converts it to 
+This schema is supported for all KYVE pools with an INTEGER as key (runtime: `@kyvejs/tendermint`, `@kyvejs/tendermint-bsync`, `@kyvejs/evm`). Instead of using the raw key, it converts it to 
 a `height` as `integer`.
 
 ### TendermintPreprocessed
