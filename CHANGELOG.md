@@ -16,7 +16,7 @@ An '!' indicates a CLI or schema breaking change.
 ### Improvements
 - [#24](https://github.com/KYVENetwork/kyve-dlt/pull/24) Add support for Comet38 `finalize_block_events` in tendermint_preprocessed schema.
 - [#25](https://github.com/KYVENetwork/kyve-dlt/pull/25) Rename `tendermint` schema to `height`.
-- [#27](https://github.com/KYVENetwork/kyve-dlt/pull/25) Use KYVE bundles endpoint.
+- [#27](https://github.com/KYVENetwork/kyve-dlt/pull/27) Use KYVE bundles endpoint.
 
 ### Features
 - [#22](https://github.com/KYVENetwork/kyve-dlt/pull/22) Add support for ArTurbo Storage Provider.
