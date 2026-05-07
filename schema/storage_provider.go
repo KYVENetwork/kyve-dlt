@@ -6,9 +6,10 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/KYVENetwork/KYVE-DLT/loader/collector"
 	"github.com/KYVENetwork/KYVE-DLT/utils"
-	"net/http"
 )
 
 func downloadBundle(bundle collector.Bundle, extra ExtraData) (DownloadResult, error) {
@@ -16,13 +17,13 @@ func downloadBundle(bundle collector.Bundle, extra ExtraData) (DownloadResult, e
 	baseUrl := ""
 	switch bundle.StorageProviderId {
 	case "1":
-		baseUrl = "https://arweave.net"
+		baseUrl = "https://bundles.services.kyve.network"
 	case "2":
-		baseUrl = "https://arweave.net"
+		baseUrl = "https://bundles.services.kyve.network"
 	case "3":
 		baseUrl = "https://storage.kyve.network"
 	case "4":
-		baseUrl = "https://arweave.net"
+		baseUrl = "https://bundles.services.kyve.network"
 	}
 
 	// Download bundle
